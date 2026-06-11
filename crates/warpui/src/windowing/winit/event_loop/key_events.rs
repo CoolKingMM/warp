@@ -434,31 +434,37 @@ pub(super) fn log_windows_keyboard_input_diagnostic(
     );
 
     write_windows_alt_c_diagnostic(&format!(
-        concat!(
-            "stage={stage} action={action} state={state:?} synthetic={is_synthetic} ",
-            "logical_key={logical_key:?} physical_key={physical_key:?} raw_text={raw_text:?} ",
-            "text_with_all_modifiers={text_with_all_modifiers:?} ",
-            "key_without_modifiers={key_without_modifiers:?} converted_key={converted_key:?} ",
-            "converted_chars={converted_chars:?} final_chars={final_chars:?} ",
-            "typed_char_text_suppressed={typed_char_text_suppressed:?} ",
-            "suppress_windows_alt_c={suppress_windows_alt_c:?} ",
-            "suppress_alt_modified_control_chars={suppress_alt_modified_control_chars:?} ",
-            "modifiers={modifiers:?} left_alt_pressed={left_alt_pressed} ",
-            "right_alt_pressed={right_alt_pressed} recent_alt={recent_alt} ",
-            "physical_alt={physical_alt} effective_alt={effective_alt} ",
-            "non_hardware_input_message={non_hardware_input_message} ",
-            "input_message_source={input_message_source:?} async_keys={async_keys}"
-        ),
-        state = input.state,
-        logical_key = &input.logical_key,
-        physical_key = &input.physical_key,
-        raw_text = input.text.as_ref(),
-        modifiers = window_state.modifiers,
-        left_alt_pressed = window_state.left_alt_pressed,
-        right_alt_pressed = window_state.right_alt_pressed,
-        recent_alt = window_state.recent_alt_key_interaction(),
-        non_hardware_input_message = input_message_source.is_non_hardware(),
-        async_keys = windows_async_key_state_snapshot(),
+        "stage={} action={} state={:?} synthetic={} logical_key={:?} physical_key={:?} \
+         raw_text={:?} text_with_all_modifiers={:?} key_without_modifiers={:?} \
+         converted_key={:?} converted_chars={:?} final_chars={:?} \
+         typed_char_text_suppressed={:?} suppress_windows_alt_c={:?} \
+         suppress_alt_modified_control_chars={:?} modifiers={:?} left_alt_pressed={} \
+         right_alt_pressed={} recent_alt={} physical_alt={} effective_alt={} \
+         non_hardware_input_message={} input_message_source={:?} async_keys={}",
+        stage,
+        action,
+        input.state,
+        is_synthetic,
+        &input.logical_key,
+        &input.physical_key,
+        input.text.as_ref(),
+        text_with_all_modifiers,
+        key_without_modifiers,
+        converted_key,
+        converted_chars,
+        final_chars,
+        typed_char_text_suppressed,
+        suppress_windows_alt_c,
+        suppress_alt_modified_control_chars,
+        window_state.modifiers,
+        window_state.left_alt_pressed,
+        window_state.right_alt_pressed,
+        window_state.recent_alt_key_interaction(),
+        physical_alt,
+        effective_alt,
+        input_message_source.is_non_hardware(),
+        input_message_source,
+        windows_async_key_state_snapshot(),
     ));
 }
 

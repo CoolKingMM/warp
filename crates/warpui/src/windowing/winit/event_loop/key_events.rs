@@ -272,8 +272,8 @@ pub(super) fn current_input_message_is_non_hardware() -> bool {
 #[cfg(windows)]
 fn current_input_message_is_non_hardware_impl() -> bool {
     let mut source = INPUT_MESSAGE_SOURCE::default();
-    unsafe { GetCurrentInputMessageSource(&mut source).is_ok() }
-        && source.originId != IMO_HARDWARE
+    let source_available = unsafe { GetCurrentInputMessageSource(&mut source).is_ok() };
+    source_available && source.originId != IMO_HARDWARE
 }
 
 #[cfg(not(windows))]

@@ -138,25 +138,29 @@ $AdditionalLicenses += @(
 )
 
 $LicensesOutput = Join-Path $DestinationDir 'THIRD_PARTY_LICENSES.txt'
-Write-Output "Generating third-party licenses at $LicensesOutput"
-cargo about generate --workspace --manifest-path "$RepoRoot\Cargo.toml" -c "$RepoRoot\about.toml" -o "$LicensesOutput" "$RepoRoot\about.hbs"
-if (-Not $?) {
-    Write-Error 'Failed to generate third-party licenses'
-    exit 1
-}
-
-# Append additional (non-Cargo) third-party licenses.
-foreach ($entry in $AdditionalLicenses) {
-    $LicenseFile = Join-Path $RepoRoot $entry.Path
-    if (-Not (Test-Path $LicenseFile)) {
-        Write-Error "License file not found: $LicenseFile"
+if ($env:NO_LICENSES) {
+    Write-Output 'Skipping third-party license generation because NO_LICENSES is set'
+} else {
+    Write-Output "Generating third-party licenses at $LicensesOutput"
+    cargo about generate --workspace --manifest-path "$RepoRoot\Cargo.toml" -c "$RepoRoot\about.toml" -o "$LicensesOutput" "$RepoRoot\about.hbs"
+    if (-Not $?) {
+        Write-Error 'Failed to generate third-party licenses'
         exit 1
     }
-    Add-Content -Path $LicensesOutput -Value ''
-    Add-Content -Path $LicensesOutput -Value "$($entry.Name) ($($entry.License))"
-    Add-Content -Path $LicensesOutput -Value ('-' * 80)
-    Get-Content -Path $LicenseFile | Add-Content -Path $LicensesOutput
-    Add-Content -Path $LicensesOutput -Value ''
+
+    # Append additional (non-Cargo) third-party licenses.
+    foreach ($entry in $AdditionalLicenses) {
+        $LicenseFile = Join-Path $RepoRoot $entry.Path
+        if (-Not (Test-Path $LicenseFile)) {
+            Write-Error "License file not found: $LicenseFile"
+            exit 1
+        }
+        Add-Content -Path $LicensesOutput -Value ''
+        Add-Content -Path $LicensesOutput -Value "$($entry.Name) ($($entry.License))"
+        Add-Content -Path $LicensesOutput -Value ('-' * 80)
+        Get-Content -Path $LicenseFile | Add-Content -Path $LicensesOutput
+        Add-Content -Path $LicensesOutput -Value ''
+    }
 }
 
 # Generate settings JSON schema unless explicitly skipped.

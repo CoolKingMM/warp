@@ -8,6 +8,10 @@ use winit::keyboard::NativeKey;
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 #[cfg(not(target_family = "wasm"))]
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
+#[cfg(windows)]
+use windows::Win32::UI::Input::KeyboardAndMouse::{
+    GetAsyncKeyState, VK_LMENU, VK_MENU, VK_RMENU,
+};
 
 use super::WindowState;
 use crate::event::KeyEventDetails;
@@ -81,7 +85,7 @@ pub fn convert_keyboard_input_event(
         return None;
     }
 
-    let chars = text_with_modifiers(&input, window_state.modifiers)
+    let mut chars = text_with_modifiers(&input, window_state.modifiers)
         .unwrap_or_default()
         .to_owned();
 
@@ -132,6 +136,23 @@ pub fn convert_keyboard_input_event(
     );
 
     #[cfg(windows)]
+    if should_drop_windows_alt_c_control_event(&key, &chars, window_state.modifiers, alt) {
+        log::info!(
+            "Dropping Windows Alt+C event reported as Ctrl+C so it is not written to the \
+             terminal PTY as SIGINT"
+        );
+        return None;
+    }
+
+    if should_suppress_alt_modified_control_chars(&chars, window_state.modifiers, alt) {
+        log::info!(
+            "Suppressing control characters from a Windows Ctrl+Alt key event so they are not \
+             written to the terminal PTY as a plain Ctrl sequence"
+        );
+        chars.clear();
+    }
+
+    #[cfg(windows)]
     if key == "c" && window_state.modifiers.control_key() && alt {
         log::info!(
             "Windows Ctrl+C key event observed while Alt is tracked as pressed; \
@@ -171,7 +192,42 @@ fn effective_alt_key(
     left_alt_pressed: bool,
     right_alt_pressed: bool,
 ) -> bool {
-    modifiers.alt_key() || left_alt_pressed || right_alt_pressed
+    modifiers.alt_key() || left_alt_pressed || right_alt_pressed || physical_alt_key_pressed()
+}
+
+fn should_suppress_alt_modified_control_chars(
+    chars: &str,
+    modifiers: ModifiersState,
+    alt: bool,
+) -> bool {
+    !chars.is_empty() && chars.chars().all(char::is_control) && modifiers.control_key() && alt
+}
+
+#[cfg(windows)]
+fn should_drop_windows_alt_c_control_event(
+    key: &str,
+    chars: &str,
+    modifiers: ModifiersState,
+    alt: bool,
+) -> bool {
+    key == "c" && should_suppress_alt_modified_control_chars(chars, modifiers, alt)
+}
+
+#[cfg(windows)]
+fn physical_alt_key_pressed() -> bool {
+    fn is_pressed(vkey: i32) -> bool {
+        let state = unsafe { GetAsyncKeyState(vkey) };
+        (state as u16 & 0x8000) != 0
+    }
+
+    is_pressed(VK_MENU.0 as i32)
+        || is_pressed(VK_LMENU.0 as i32)
+        || is_pressed(VK_RMENU.0 as i32)
+}
+
+#[cfg(not(windows))]
+fn physical_alt_key_pressed() -> bool {
+    false
 }
 
 #[cfg(not(target_family = "wasm"))]

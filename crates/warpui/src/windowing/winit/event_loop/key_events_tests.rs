@@ -1,7 +1,10 @@
 use winit::keyboard::Key::Character;
 use winit::keyboard::{KeyCode, ModifiersState, NativeKeyCode, PhysicalKey, SmolStr};
 
-use super::{effective_alt_key, get_input_key, us_qwerty_fallback_for_chord};
+use super::{
+    effective_alt_key, get_input_key, should_suppress_alt_modified_control_chars,
+    us_qwerty_fallback_for_chord,
+};
 
 #[test]
 fn test_get_input_key() {
@@ -166,4 +169,62 @@ fn effective_alt_key_includes_tracked_physical_alt() {
     assert!(effective_alt_key(ModifiersState::ALT, false, false));
     assert!(effective_alt_key(ModifiersState::empty(), true, false));
     assert!(effective_alt_key(ModifiersState::empty(), false, true));
+}
+
+#[test]
+fn suppresses_alt_modified_control_chars_only() {
+    assert!(should_suppress_alt_modified_control_chars(
+        "\x03",
+        ModifiersState::CONTROL,
+        true,
+    ));
+    assert!(!should_suppress_alt_modified_control_chars(
+        "\x03",
+        ModifiersState::CONTROL,
+        false,
+    ));
+    assert!(!should_suppress_alt_modified_control_chars(
+        "\x03",
+        ModifiersState::empty(),
+        true,
+    ));
+    assert!(!should_suppress_alt_modified_control_chars(
+        "c",
+        ModifiersState::CONTROL,
+        true,
+    ));
+    assert!(!should_suppress_alt_modified_control_chars(
+        "",
+        ModifiersState::CONTROL,
+        true,
+    ));
+}
+
+#[cfg(windows)]
+#[test]
+fn drops_windows_alt_c_reported_as_ctrl_c_only() {
+    assert!(super::should_drop_windows_alt_c_control_event(
+        "c",
+        "\x03",
+        ModifiersState::CONTROL,
+        true,
+    ));
+    assert!(!super::should_drop_windows_alt_c_control_event(
+        "c",
+        "\x03",
+        ModifiersState::CONTROL,
+        false,
+    ));
+    assert!(!super::should_drop_windows_alt_c_control_event(
+        "v",
+        "\x16",
+        ModifiersState::CONTROL,
+        true,
+    ));
+    assert!(!super::should_drop_windows_alt_c_control_event(
+        "c",
+        "c",
+        ModifiersState::CONTROL,
+        true,
+    ));
 }

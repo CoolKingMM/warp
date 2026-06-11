@@ -209,6 +209,18 @@ jobs:
           path: ${{ steps.bundle.outputs.installer_path }}
           if-no-files-found: error
 
+      - name: Stage installer for release upload
+        if: ${{ github.ref_type == 'tag' }}
+        id: release_installer
+        shell: pwsh
+        run: |
+          $releaseDir = Join-Path $PWD 'release-assets'
+          New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+          $installerPath = '${{ steps.bundle.outputs.installer_path }}'
+          $releaseInstallerPath = Join-Path $releaseDir 'WarpOssSetup.exe'
+          Copy-Item -LiteralPath $installerPath -Destination $releaseInstallerPath -Force
+          "installer_path=release-assets/WarpOssSetup.exe" >> $env:GITHUB_OUTPUT
+
       - name: Upload build diagnostics
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
@@ -223,4 +235,5 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: Warp OSS ${{ github.ref_name }}
-          files: ${{ steps.bundle.outputs.installer_path }}
+          files: ${{ steps.release_installer.outputs.installer_path }}
+          fail_on_unmatched_files: true

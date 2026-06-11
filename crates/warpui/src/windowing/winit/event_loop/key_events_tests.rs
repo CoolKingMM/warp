@@ -3,6 +3,7 @@ use winit::keyboard::{KeyCode, ModifiersState, NativeKeyCode, PhysicalKey, SmolS
 
 use super::{
     effective_alt_key, get_input_key, should_suppress_alt_modified_control_chars,
+    should_suppress_windows_ctrl_c_keydown, should_suppress_windows_ctrl_c_text,
     us_qwerty_fallback_for_chord,
 };
 
@@ -200,6 +201,72 @@ fn suppresses_alt_modified_control_chars_only() {
     ));
 }
 
+#[test]
+fn suppresses_windows_ctrl_c_keydown_after_recent_alt_or_non_hardware_source() {
+    assert_eq!(
+        should_suppress_windows_ctrl_c_keydown("c", ModifiersState::CONTROL, true, false),
+        cfg!(windows),
+    );
+    assert_eq!(
+        should_suppress_windows_ctrl_c_keydown("c", ModifiersState::CONTROL, false, true),
+        cfg!(windows),
+    );
+    assert!(!should_suppress_windows_ctrl_c_keydown(
+        "c",
+        ModifiersState::CONTROL,
+        false,
+        false,
+    ));
+    assert!(!should_suppress_windows_ctrl_c_keydown(
+        "c",
+        ModifiersState::empty(),
+        true,
+        true,
+    ));
+    assert!(!should_suppress_windows_ctrl_c_keydown(
+        "v",
+        ModifiersState::CONTROL,
+        true,
+        true,
+    ));
+}
+
+#[test]
+fn suppresses_windows_ctrl_c_text_after_recent_alt_or_non_hardware_source() {
+    assert_eq!(
+        should_suppress_windows_ctrl_c_text("\x03", ModifiersState::CONTROL, true, false),
+        cfg!(windows),
+    );
+    assert_eq!(
+        should_suppress_windows_ctrl_c_text("\x03", ModifiersState::empty(), false, true),
+        cfg!(windows),
+    );
+    assert!(!should_suppress_windows_ctrl_c_text(
+        "\x03",
+        ModifiersState::CONTROL,
+        false,
+        false,
+    ));
+    assert!(!should_suppress_windows_ctrl_c_text(
+        "\x03",
+        ModifiersState::empty(),
+        true,
+        false,
+    ));
+    assert!(!should_suppress_windows_ctrl_c_text(
+        "\x16",
+        ModifiersState::CONTROL,
+        true,
+        true,
+    ));
+    assert!(!should_suppress_windows_ctrl_c_text(
+        "c",
+        ModifiersState::CONTROL,
+        true,
+        true,
+    ));
+}
+
 #[cfg(windows)]
 #[test]
 fn drops_windows_alt_c_reported_as_ctrl_c_only() {
@@ -208,23 +275,55 @@ fn drops_windows_alt_c_reported_as_ctrl_c_only() {
         "\x03",
         ModifiersState::CONTROL,
         true,
+        false,
+        false,
     ));
     assert!(!super::should_drop_windows_alt_c_control_event(
         "c",
         "\x03",
         ModifiersState::CONTROL,
         false,
+        false,
+        false,
+    ));
+    assert!(super::should_drop_windows_alt_c_control_event(
+        "c",
+        "",
+        ModifiersState::CONTROL,
+        false,
+        false,
+        true,
+    ));
+    assert!(super::should_drop_windows_alt_c_control_event(
+        "c",
+        "\x03",
+        ModifiersState::CONTROL,
+        false,
+        true,
+        false,
+    ));
+    assert!(super::should_drop_windows_alt_c_control_event(
+        "c",
+        "\x03",
+        ModifiersState::empty(),
+        false,
+        false,
+        true,
     ));
     assert!(!super::should_drop_windows_alt_c_control_event(
         "v",
         "\x16",
         ModifiersState::CONTROL,
         true,
+        true,
+        false,
     ));
     assert!(!super::should_drop_windows_alt_c_control_event(
         "c",
         "c",
         ModifiersState::CONTROL,
+        true,
+        true,
         true,
     ));
 }

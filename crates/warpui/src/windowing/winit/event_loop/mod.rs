@@ -21,7 +21,10 @@ use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoopProxy};
 use winit::keyboard::{self, KeyCode};
 use winit::window::WindowId as WinitWindowId;
 
-use self::key_events::convert_keyboard_input_event;
+use self::key_events::{
+    convert_keyboard_input_event, current_input_message_is_non_hardware,
+    should_suppress_windows_ctrl_c_text,
+};
 use super::app::ClipboardEvent;
 use super::window::DEFAULT_TITLEBAR_HEIGHT;
 #[cfg(windows)]
@@ -72,6 +75,10 @@ const MOMENTUM_THRESHOLD: f32 = 50.0; // Min-velocity to start momentum scroll, 
 const MOMENTUM_MIN_VELOCITY: f32 = 1.0; // When velocity falls below this, scrolling stops. 1.0 is subpixel
 const MOMENTUM_MAX_VELOCITY: f32 = 2000.0; // Hard cap on momentum initial velocity (px/s)
 const MIN_VELOCITY_TIME_DELTA: f32 = 0.004; // Floor for time deltas to prevent spikes from batched events
+
+/// Clipboard launchers on Windows can handle Alt+C globally and then inject Ctrl+C back into
+/// the previously focused app to capture selected text. Suppress that injected Ctrl+C briefly.
+const RECENT_ALT_CTRL_C_SUPPRESSION_INTERVAL: Duration = Duration::from_millis(1500);
 
 /// TryFrom implementation for converting winit's `KeyCode` to
 /// `crate::platform::keyboard::KeyCode`.
@@ -137,6 +144,8 @@ struct WindowState {
     left_alt_pressed: bool,
     /// Whether the right Alt key is currently pressed. See [`Self::left_alt_pressed`].
     right_alt_pressed: bool,
+    /// Last observed Alt key press/release or Alt modifier transition.
+    last_alt_key_interaction_at: Option<Instant>,
     /// The currently-pressed mouse button, if any. Set back to None when the button is released.
     ///
     /// This ultimately should be a HashSet of mouse buttons, as more than one
@@ -173,6 +182,7 @@ impl WindowState {
             modifiers: Default::default(),
             left_alt_pressed: false,
             right_alt_pressed: false,
+            last_alt_key_interaction_at: None,
             current_mouse_button_pressed: None,
             last_mouse_button_pressed: None,
             last_cursor_position: Default::default(),
@@ -184,6 +194,16 @@ impl WindowState {
             #[cfg(target_family = "wasm")]
             pending_soft_keyboard_request: false,
         }
+    }
+
+    fn mark_alt_key_interaction(&mut self) {
+        self.last_alt_key_interaction_at = Some(Instant::now());
+    }
+
+    fn recent_alt_key_interaction(&self) -> bool {
+        self.last_alt_key_interaction_at.is_some_and(|last| {
+            last.elapsed() <= RECENT_ALT_CTRL_C_SUPPRESSION_INTERVAL
+        })
     }
 
     /// Cancels ongoing momentum scroll, clearing both the animation timer and velocity state.
@@ -1135,6 +1155,9 @@ impl EventLoop {
         match evt {
             WindowEvent::ModifiersChanged(modifiers) => {
                 let state = modifiers.state();
+                if state.alt_key() != window_state.modifiers.alt_key() {
+                    window_state.mark_alt_key_interaction();
+                }
                 window_state.modifiers = state;
                 // If Alt is no longer held at all, clear both per-side flags as a safety net
                 // in case a key-release event was dropped (e.g. released while the window was
@@ -1266,8 +1289,14 @@ impl EventLoop {
                 if let keyboard::PhysicalKey::Code(keycode) = &event.physical_key {
                     let is_pressed = event.state == ElementState::Pressed;
                     match keycode {
-                        KeyCode::AltLeft => window_state.left_alt_pressed = is_pressed,
-                        KeyCode::AltRight => window_state.right_alt_pressed = is_pressed,
+                        KeyCode::AltLeft => {
+                            window_state.left_alt_pressed = is_pressed;
+                            window_state.mark_alt_key_interaction();
+                        }
+                        KeyCode::AltRight => {
+                            window_state.right_alt_pressed = is_pressed;
+                            window_state.mark_alt_key_interaction();
+                        }
                         _ => {}
                     }
                 }
@@ -1285,11 +1314,31 @@ impl EventLoop {
                     }
                 }
 
-                let event_text = event.text.as_ref().map(|text| text.to_string());
+                let non_hardware_input_message = current_input_message_is_non_hardware();
+                let mut event_text = event.text.as_ref().map(|text| text.to_string());
+                if event_text.as_deref().is_some_and(|chars| {
+                    should_suppress_windows_ctrl_c_text(
+                        chars,
+                        window_state.modifiers,
+                        window_state.recent_alt_key_interaction(),
+                        non_hardware_input_message,
+                    )
+                }) {
+                    log::info!(
+                        "Suppressing Ctrl+C text from an Alt hotkey or non-hardware input; \
+                         treating it as clipboard-launcher input"
+                    );
+                    event_text = None;
+                }
                 let event_state = event.state;
                 let is_unidentified_key =
                     matches!(event.logical_key, keyboard::Key::Unidentified(_));
-                match convert_keyboard_input_event(event, window_state, is_synthetic) {
+                match convert_keyboard_input_event(
+                    event,
+                    window_state,
+                    is_synthetic,
+                    non_hardware_input_message,
+                ) {
                     Some(warp_ui_event) => Some(ConvertedEvent::KeyDownWithTypedCharacters {
                         chars: event_text,
                         event: warp_ui_event,

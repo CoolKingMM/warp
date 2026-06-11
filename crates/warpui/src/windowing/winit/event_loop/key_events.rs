@@ -9,6 +9,10 @@ use winit::keyboard::{Key, ModifiersState, NamedKey};
 #[cfg(not(target_family = "wasm"))]
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
 #[cfg(windows)]
+use windows::Win32::UI::Input::{
+    GetCurrentInputMessageSource, IMO_HARDWARE, INPUT_MESSAGE_SOURCE,
+};
+#[cfg(windows)]
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, VK_LMENU, VK_MENU, VK_RMENU,
 };
@@ -64,6 +68,7 @@ pub fn convert_keyboard_input_event(
     input: winit::event::KeyEvent,
     window_state: &WindowState,
     is_synthetic: bool,
+    non_hardware_input_message: bool,
 ) -> Option<crate::Event> {
     if input.state != ElementState::Pressed {
         return None;
@@ -134,12 +139,20 @@ pub fn convert_keyboard_input_event(
         window_state.left_alt_pressed,
         window_state.right_alt_pressed,
     );
+    let recent_alt_key_interaction = window_state.recent_alt_key_interaction();
 
     #[cfg(windows)]
-    if should_drop_windows_alt_c_control_event(&key, &chars, window_state.modifiers, alt) {
+    if should_drop_windows_alt_c_control_event(
+        &key,
+        &chars,
+        window_state.modifiers,
+        alt,
+        recent_alt_key_interaction,
+        non_hardware_input_message,
+    ) {
         log::info!(
-            "Dropping Windows Alt+C event reported as Ctrl+C so it is not written to the \
-             terminal PTY as SIGINT"
+            "Dropping Windows Ctrl+C event from an Alt hotkey or non-hardware input so it is not \
+             written to the terminal PTY as SIGINT"
         );
         return None;
     }
@@ -200,7 +213,10 @@ fn should_suppress_alt_modified_control_chars(
     modifiers: ModifiersState,
     alt: bool,
 ) -> bool {
-    !chars.is_empty() && chars.chars().all(char::is_control) && modifiers.control_key() && alt
+    !chars.is_empty()
+        && chars.chars().all(char::is_control)
+        && modifiers.control_key()
+        && alt
 }
 
 #[cfg(windows)]
@@ -209,8 +225,60 @@ fn should_drop_windows_alt_c_control_event(
     chars: &str,
     modifiers: ModifiersState,
     alt: bool,
+    recent_alt_key_interaction: bool,
+    non_hardware_input_message: bool,
 ) -> bool {
-    key == "c" && should_suppress_alt_modified_control_chars(chars, modifiers, alt)
+    let recent_alt_or_current_alt = alt || recent_alt_key_interaction;
+    should_suppress_windows_ctrl_c_keydown(
+        key,
+        modifiers,
+        recent_alt_or_current_alt,
+        non_hardware_input_message,
+    ) || should_suppress_windows_ctrl_c_text(
+        chars,
+        modifiers,
+        recent_alt_or_current_alt,
+        non_hardware_input_message,
+    )
+}
+
+pub(super) fn should_suppress_windows_ctrl_c_keydown(
+    key: &str,
+    modifiers: ModifiersState,
+    recent_alt_key_interaction: bool,
+    non_hardware_input_message: bool,
+) -> bool {
+    cfg!(windows)
+        && key == "c"
+        && modifiers.control_key()
+        && (non_hardware_input_message || recent_alt_key_interaction)
+}
+
+pub(super) fn should_suppress_windows_ctrl_c_text(
+    chars: &str,
+    modifiers: ModifiersState,
+    recent_alt_key_interaction: bool,
+    non_hardware_input_message: bool,
+) -> bool {
+    cfg!(windows)
+        && chars == "\x03"
+        && (non_hardware_input_message || (modifiers.control_key() && recent_alt_key_interaction))
+}
+
+pub(super) fn current_input_message_is_non_hardware() -> bool {
+    cfg!(windows) && current_input_message_is_non_hardware_impl()
+}
+
+#[cfg(windows)]
+fn current_input_message_is_non_hardware_impl() -> bool {
+    let mut source = INPUT_MESSAGE_SOURCE::default();
+    unsafe { GetCurrentInputMessageSource(&mut source).is_ok() }
+        && source.originId != IMO_HARDWARE
+}
+
+#[cfg(not(windows))]
+fn current_input_message_is_non_hardware_impl() -> bool {
+    false
 }
 
 #[cfg(windows)]

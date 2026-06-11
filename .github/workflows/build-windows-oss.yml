@@ -113,6 +113,9 @@ jobs:
         if: ${{ github.ref_type != 'tag' }}
         id: portable
         shell: pwsh
+        env:
+          NO_LICENSES: 1
+          SKIP_SETTINGS_SCHEMA: 1
         run: |
           $portableDir = Join-Path $env:RUNNER_TEMP 'WarpOssPortable'
           New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
@@ -121,24 +124,65 @@ jobs:
           $targetProfileDir = '${{ steps.bundle.outputs.target_profile_dir }}'
           Copy-Item -Path $binaryPath -Destination (Join-Path $portableDir 'warp-oss.exe') -Force
 
-          foreach ($fileName in @('conpty.dll', 'dxcompiler.dll', 'dxil.dll')) {
-            $source = Join-Path $targetProfileDir $fileName
-            if (Test-Path $source) {
-              Copy-Item -Path $source -Destination $portableDir -Force
-            }
-          }
-
-          $openConsoleDir = Join-Path $targetProfileDir 'x64'
-          if (Test-Path $openConsoleDir) {
-            Copy-Item -Path $openConsoleDir -Destination (Join-Path $portableDir 'x64') -Recurse -Force
-          }
-
           $windowsAssetsDir = Join-Path $PWD 'app\assets\windows\x64'
-          foreach ($fileName in @('vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll')) {
-            $source = Join-Path $windowsAssetsDir $fileName
-            if (Test-Path $source) {
-              Copy-Item -Path $source -Destination $portableDir -Force
+          function Copy-FirstExistingFile {
+            param(
+              [String[]]$Sources,
+              [String]$Destination
+            )
+
+            foreach ($source in $Sources) {
+              if (Test-Path $source) {
+                Copy-Item -Path $source -Destination $Destination -Force
+                return $true
+              }
             }
+
+            return $false
+          }
+
+          $missingRuntimeFiles = @()
+          foreach ($fileName in @(
+            'conpty.dll',
+            'dxcompiler.dll',
+            'dxil.dll',
+            'vcruntime140.dll',
+            'vcruntime140_1.dll',
+            'msvcp140.dll'
+          )) {
+            $copied = Copy-FirstExistingFile `
+              -Sources @((Join-Path $targetProfileDir $fileName), (Join-Path $windowsAssetsDir $fileName)) `
+              -Destination (Join-Path $portableDir $fileName)
+            if (-not $copied) {
+              $missingRuntimeFiles += $fileName
+            }
+          }
+
+          $portableOpenConsoleDir = Join-Path $portableDir 'x64'
+          New-Item -ItemType Directory -Path $portableOpenConsoleDir -Force | Out-Null
+          $copiedOpenConsole = Copy-FirstExistingFile `
+            -Sources @((Join-Path $targetProfileDir 'x64\OpenConsole.exe'), (Join-Path $windowsAssetsDir 'OpenConsole.exe')) `
+            -Destination (Join-Path $portableOpenConsoleDir 'OpenConsole.exe')
+          if (-not $copiedOpenConsole) {
+            $missingRuntimeFiles += 'x64\OpenConsole.exe'
+          }
+
+          if ($missingRuntimeFiles.Count -gt 0) {
+            throw "Missing runtime files: $($missingRuntimeFiles -join ', ')"
+          }
+
+          $resourcesDir = Join-Path $targetProfileDir 'resources'
+          & .\script\windows\prepare_bundled_resources.ps1 -DestinationDir $resourcesDir -Channel 'oss' -CargoProfile 'dev'
+          if (-not $?) {
+            throw 'Failed to prepare bundled resources for portable artifact'
+          }
+          if (Test-Path $resourcesDir) {
+            Copy-Item -Path $resourcesDir -Destination (Join-Path $portableDir 'resources') -Recurse -Force
+          }
+
+          $bootstrapPath = Join-Path $PWD 'app\assets\bundled\bootstrap\pwsh.ps1'
+          if (Test-Path $bootstrapPath) {
+            Copy-Item -Path $bootstrapPath -Destination (Join-Path $portableDir 'pwsh.ps1') -Force
           }
 
           $iconPath = Join-Path $PWD 'app\channels\oss\icon\no-padding\icon.ico'

@@ -22,9 +22,11 @@ use winit::keyboard::{self, KeyCode};
 use winit::window::WindowId as WinitWindowId;
 
 use self::key_events::{
-    convert_keyboard_input_event, current_input_message_is_non_hardware,
+    convert_keyboard_input_event, current_input_message_source_diagnostics,
     should_suppress_windows_ctrl_c_text,
 };
+#[cfg(windows)]
+use self::key_events::log_windows_keyboard_input_diagnostic;
 use super::app::ClipboardEvent;
 use super::window::DEFAULT_TITLEBAR_HEIGHT;
 #[cfg(windows)]
@@ -1301,12 +1303,30 @@ impl EventLoop {
                     }
                 }
 
+                let input_message_source = current_input_message_source_diagnostics();
+                let non_hardware_input_message = input_message_source.is_non_hardware();
+
                 // If the event is a modifier key, just by itself, we handle it specially, issuing
                 // the appropriate Warp-side event (ModifierKeyChanged).
                 if let (None, keyboard::PhysicalKey::Code(keycode)) =
                     (&event.text, &event.physical_key)
                 {
                     if let Ok(mapped_keycode) = try_from_winit_keycode(keycode) {
+                        #[cfg(windows)]
+                        log_windows_keyboard_input_diagnostic(
+                            "window_event_keyboard_input",
+                            &event,
+                            window_state,
+                            is_synthetic,
+                            input_message_source,
+                            None,
+                            None,
+                            None,
+                            "emit_modifier_key_changed",
+                            None,
+                            None,
+                            None,
+                        );
                         return Some(ConvertedEvent::ModifierKeyChanged {
                             key_code: mapped_keycode,
                             state: event.state,
@@ -1314,16 +1334,16 @@ impl EventLoop {
                     }
                 }
 
-                let non_hardware_input_message = current_input_message_is_non_hardware();
                 let mut event_text = event.text.as_ref().map(|text| text.to_string());
-                if event_text.as_deref().is_some_and(|chars| {
+                let typed_char_text_suppressed = event_text.as_deref().is_some_and(|chars| {
                     should_suppress_windows_ctrl_c_text(
                         chars,
                         window_state.modifiers,
                         window_state.recent_alt_key_interaction(),
                         non_hardware_input_message,
                     )
-                }) {
+                });
+                if typed_char_text_suppressed {
                     log::info!(
                         "Suppressing Ctrl+C text from an Alt hotkey or non-hardware input; \
                          treating it as clipboard-launcher input"
@@ -1338,6 +1358,8 @@ impl EventLoop {
                     window_state,
                     is_synthetic,
                     non_hardware_input_message,
+                    input_message_source,
+                    typed_char_text_suppressed,
                 ) {
                     Some(warp_ui_event) => Some(ConvertedEvent::KeyDownWithTypedCharacters {
                         chars: event_text,

@@ -1,7 +1,7 @@
 use winit::keyboard::Key::Character;
-use winit::keyboard::{KeyCode, NativeKeyCode, PhysicalKey, SmolStr};
+use winit::keyboard::{KeyCode, ModifiersState, NativeKeyCode, PhysicalKey, SmolStr};
 
-use super::{get_input_key, us_qwerty_fallback_for_chord};
+use super::{effective_alt_key, get_input_key, us_qwerty_fallback_for_chord};
 
 #[test]
 fn test_get_input_key() {
@@ -158,4 +158,12 @@ fn us_qwerty_fallback_returns_none_for_unidentified_physical_key() {
             "unidentified key should not have a chord fallback (shift={shift})",
         );
     }
+}
+
+#[test]
+fn effective_alt_key_includes_tracked_physical_alt() {
+    assert!(!effective_alt_key(ModifiersState::empty(), false, false));
+    assert!(effective_alt_key(ModifiersState::ALT, false, false));
+    assert!(effective_alt_key(ModifiersState::empty(), true, false));
+    assert!(effective_alt_key(ModifiersState::empty(), false, true));
 }

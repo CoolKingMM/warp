@@ -125,9 +125,23 @@ pub fn convert_keyboard_input_event(
 
     let key = convert_key(input_key)?.to_string();
 
+    let alt = effective_alt_key(
+        window_state.modifiers,
+        window_state.left_alt_pressed,
+        window_state.right_alt_pressed,
+    );
+
+    #[cfg(windows)]
+    if key == "c" && window_state.modifiers.control_key() && alt {
+        log::info!(
+            "Windows Ctrl+C key event observed while Alt is tracked as pressed; \
+             treating it as ctrl-alt-c to avoid matching plain ctrl-c"
+        );
+    }
+
     let keystroke = Keystroke {
         ctrl: window_state.modifiers.control_key(),
-        alt: window_state.modifiers.alt_key(),
+        alt,
         shift,
         cmd: window_state.modifiers.super_key(),
         meta: false,
@@ -150,6 +164,14 @@ pub fn convert_keyboard_input_event(
         },
         is_composing: false,
     })
+}
+
+fn effective_alt_key(
+    modifiers: ModifiersState,
+    left_alt_pressed: bool,
+    right_alt_pressed: bool,
+) -> bool {
+    modifiers.alt_key() || left_alt_pressed || right_alt_pressed
 }
 
 #[cfg(not(target_family = "wasm"))]

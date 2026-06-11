@@ -25,7 +25,7 @@ env:
 
 jobs:
   build-windows-oss:
-    name: Build Windows OSS installer
+    name: Build Windows OSS
     runs-on: windows-latest
     timeout-minutes: 120
 
@@ -71,7 +71,7 @@ jobs:
           "release_tag=$version" >> $env:GITHUB_OUTPUT
           Write-Output "Using release tag/version: $version"
 
-      - name: Build installer
+      - name: Build Windows OSS artifact
         id: bundle
         shell: pwsh
         env:
@@ -79,6 +79,12 @@ jobs:
           NO_LICENSES: 1
           SKIP_SETTINGS_SCHEMA: 1
         run: |
+          $diagnosticsDir = Join-Path $env:RUNNER_TEMP 'warp-build-diagnostics'
+          New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null
+          $buildLog = Join-Path $diagnosticsDir 'bundle.log'
+          "diagnostics_dir=$diagnosticsDir" >> $env:GITHUB_OUTPUT
+          "build_log=$buildLog" >> $env:GITHUB_OUTPUT
+
           $bundleArgs = @(
             '-CHANNEL', 'oss',
             '-ARCH', 'x64',
@@ -86,15 +92,86 @@ jobs:
           )
           if ($env:REF_TYPE -ne 'tag') {
             $bundleArgs += '-DEBUG_BUILD'
+            $bundleArgs += '-SKIP_BUILD_INSTALLER'
           }
-          .\script\windows\bundle.ps1 @bundleArgs
+
+          $bundleScript = Join-Path $PWD 'script\windows\bundle.ps1'
+          $commandArgs = @(
+            '-NoProfile',
+            '-ExecutionPolicy', 'Bypass',
+            '-File', $bundleScript
+          ) + $bundleArgs
+
+          Write-Output "Running bundle script with args: $($bundleArgs -join ' ')"
+          & pwsh @commandArgs 2>&1 | Tee-Object -FilePath $buildLog
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Bundle script failed with exit code $LASTEXITCODE. See $buildLog"
+            exit $LASTEXITCODE
+          }
+
+      - name: Stage portable artifact
+        if: ${{ github.ref_type != 'tag' }}
+        id: portable
+        shell: pwsh
+        run: |
+          $portableDir = Join-Path $env:RUNNER_TEMP 'WarpOssPortable'
+          New-Item -ItemType Directory -Path $portableDir -Force | Out-Null
+
+          $binaryPath = '${{ steps.bundle.outputs.binary_path }}'
+          $targetProfileDir = '${{ steps.bundle.outputs.target_profile_dir }}'
+          Copy-Item -Path $binaryPath -Destination (Join-Path $portableDir 'warp-oss.exe') -Force
+
+          foreach ($fileName in @('conpty.dll', 'dxcompiler.dll', 'dxil.dll')) {
+            $source = Join-Path $targetProfileDir $fileName
+            if (Test-Path $source) {
+              Copy-Item -Path $source -Destination $portableDir -Force
+            }
+          }
+
+          $openConsoleDir = Join-Path $targetProfileDir 'x64'
+          if (Test-Path $openConsoleDir) {
+            Copy-Item -Path $openConsoleDir -Destination (Join-Path $portableDir 'x64') -Recurse -Force
+          }
+
+          $windowsAssetsDir = Join-Path $PWD 'app\assets\windows\x64'
+          foreach ($fileName in @('vcruntime140.dll', 'vcruntime140_1.dll', 'msvcp140.dll')) {
+            $source = Join-Path $windowsAssetsDir $fileName
+            if (Test-Path $source) {
+              Copy-Item -Path $source -Destination $portableDir -Force
+            }
+          }
+
+          $iconPath = Join-Path $PWD 'app\channels\oss\icon\no-padding\icon.ico'
+          if (Test-Path $iconPath) {
+            Copy-Item -Path $iconPath -Destination (Join-Path $portableDir 'icon.ico') -Force
+          }
+
+          Get-ChildItem -Path $portableDir -Recurse | Select-Object FullName, Length
+          "portable_path=$portableDir" >> $env:GITHUB_OUTPUT
+
+      - name: Upload portable artifact
+        if: ${{ github.ref_type != 'tag' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: WarpOssPortable-windows-x64
+          path: ${{ steps.portable.outputs.portable_path }}
+          if-no-files-found: error
 
       - name: Upload installer artifact
+        if: ${{ github.ref_type == 'tag' }}
         uses: actions/upload-artifact@v4
         with:
           name: WarpOssSetup-windows-x64
           path: ${{ steps.bundle.outputs.installer_path }}
           if-no-files-found: error
+
+      - name: Upload build diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: WarpOssBuildDiagnostics-windows-x64
+          path: ${{ steps.bundle.outputs.diagnostics_dir }}
+          if-no-files-found: warn
 
       - name: Upload installer to GitHub Release
         if: ${{ github.ref_type == 'tag' }}

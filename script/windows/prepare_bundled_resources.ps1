@@ -49,6 +49,16 @@ if (Test-Path $BundledSource -PathType Container) {
         Remove-Item -Path $BundledDestination -Recurse -Force
     }
     Copy-Item -Path $BundledSource -Destination $BundledDestination -Recurse -Force
+
+    if ($Channel -eq 'oss') {
+        Write-Output 'Removing AI/MCP bundled resources for OSS...'
+        foreach ($RelativePath in @('skills', 'mcp_skills')) {
+            $PathToRemove = Join-Path $BundledDestination $RelativePath
+            if (Test-Path $PathToRemove -PathType Container) {
+                Remove-Item -LiteralPath $PathToRemove -Recurse -Force
+            }
+        }
+    }
 } else {
     Write-Warning "No bundled directory found at $BundledSource"
 }

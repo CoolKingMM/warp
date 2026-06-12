@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use warp_core::channel::ChannelState;
+use warp_core::channel::{Channel, ChannelState};
 pub use warp_core::features::*;
 
 /// Mark all features which should be enabled on the current channel as enabled.
@@ -18,7 +18,7 @@ fn enabled_features() -> HashSet<FeatureFlag> {
     let mut flags = ChannelState::additional_features();
 
     // Enable flags for release builds, if appropriate.
-    if ChannelState::is_release_bundle() {
+    if ChannelState::is_release_bundle() && ChannelState::channel() != Channel::Oss {
         flags.extend(RELEASE_FLAGS);
     }
 

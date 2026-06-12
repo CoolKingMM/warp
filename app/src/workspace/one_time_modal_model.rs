@@ -395,6 +395,10 @@ impl OneTimeModalModel {
         &mut self,
         ctx: &mut ModelContext<Self>,
     ) -> bool {
+        if cfg!(feature = "oss_minimal_assets") {
+            return false;
+        }
+
         use crate::workspaces::user_workspaces::UserWorkspaces;
 
         // Check if already dismissed

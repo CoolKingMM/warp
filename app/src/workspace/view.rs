@@ -18466,6 +18466,10 @@ impl Workspace {
 
     /// Opens the Codex modal.
     pub fn open_codex_modal(&mut self, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_minimal_assets") {
+            return;
+        }
+
         self.current_workspace_state.is_codex_modal_open = true;
         ctx.focus(&self.codex_modal);
         ctx.notify();
@@ -18588,6 +18592,10 @@ impl Workspace {
     }
 
     pub fn check_and_open_free_tier_limit_modal(&mut self, ctx: &mut ViewContext<Self>) -> bool {
+        if cfg!(feature = "oss_minimal_assets") {
+            return false;
+        }
+
         let is_free_tier = !UserWorkspaces::as_ref(ctx)
             .current_workspace()
             .is_some_and(|workspace| workspace.billing_metadata.is_user_on_paid_plan());

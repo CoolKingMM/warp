@@ -10,6 +10,7 @@ use warpui_core::AssetProvider;
 #[include = "async/**"] // Should be kept in sync with ASYNC_ASSETS_DIR.
 #[cfg_attr(target_family = "wasm", exclude = "async/**")]
 #[cfg_attr(feature = "oss_minimal_assets", exclude = "async/png/onboarding/**")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "async/png/*.png")]
 // Excludes take precedence.
 // Standalone CLI builds (the `oz` tarball) are headless and never render the
 // onboarding/theme imagery in `async/`, so we exclude those bytes from the

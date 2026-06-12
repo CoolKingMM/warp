@@ -144,8 +144,6 @@ jobs:
           $missingRuntimeFiles = @()
           foreach ($fileName in @(
             'conpty.dll',
-            'dxcompiler.dll',
-            'dxil.dll',
             'vcruntime140.dll',
             'vcruntime140_1.dll',
             'msvcp140.dll'

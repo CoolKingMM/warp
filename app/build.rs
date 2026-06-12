@@ -404,8 +404,8 @@ fn copy_async_assets() {
 /// They are organized as follows:
 /// - `conpty.dll`
 /// - `{platform}/OpenConsole.exe` (ex: `x64/OpenConsole.exe`)
-/// - `dxcompiler.dll` (ex: `dxcompiler.dll`)
-/// - `dxil.dll` (ex: `dxil.dll`)
+/// - `dxcompiler.dll` (ex: `dxcompiler.dll`) unless building OSS minimal.
+/// - `dxil.dll` (ex: `dxil.dll`) unless building OSS minimal.
 fn copy_windows_assets(target_dir: &Path) {
     println!("cargo:rerun-if-changed=assets/windows");
 
@@ -434,15 +434,16 @@ fn copy_windows_assets(target_dir: &Path) {
         panic!("Could not copy conpty.dll from {windows_asset_dir:?} to {target_dir:?}: {err:#}")
     });
 
-    // Copy the DXC DLLs into the target directory.
-    for dxc_file in [DXCOMPILER_DLL_FILE, DXIL_DLL_FILE] {
-        fs::copy(
-            windows_asset_dir.join(dxc_file),
-            target_dir.join(dxc_file),
-        )
-        .unwrap_or_else(|err| {
-            panic!("Could not copy {dxc_file} from {windows_asset_dir:?} to {target_dir:?}: {err:#}")
-        });
+    // OSS minimal relies on wgpu's FXC fallback instead of shipping the DXC DLLs.
+    if env::var("CARGO_FEATURE_OSS_MINIMAL_ASSETS").is_err() {
+        for dxc_file in [DXCOMPILER_DLL_FILE, DXIL_DLL_FILE] {
+            fs::copy(windows_asset_dir.join(dxc_file), target_dir.join(dxc_file))
+                .unwrap_or_else(|err| {
+                    panic!(
+                        "Could not copy {dxc_file} from {windows_asset_dir:?} to {target_dir:?}: {err:#}"
+                    )
+                });
+        }
     }
 
     // Copy OpenConsole.exe into {target_directory}/{arch}.

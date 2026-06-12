@@ -998,10 +998,12 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
         use warpui::platform::windows::AppBuilderExt;
         app_builder.set_app_user_model_id(ChannelState::app_id().to_string());
 
-        // Only use DXC for DirectX shader compilation if we're not running in a Parallels VM
-        // Parallels VMs can have issues with DXC shader compilation
+        // Only use DXC for DirectX shader compilation if we're not running in a Parallels VM.
+        // OSS minimal builds intentionally rely on wgpu's FXC fallback so the DXC DLLs do not
+        // need to be distributed.
         let is_parallels_vm = crate::util::vm_detection::is_running_in_windows_parallels_vm();
-        if !is_parallels_vm {
+        let should_use_dxc = !is_parallels_vm && !cfg!(feature = "oss_minimal_assets");
+        if should_use_dxc {
             log::info!("Using DXC for DirectX shader compilation");
             use warpui::platform::windows::DXCPath;
 
@@ -1009,6 +1011,10 @@ fn run_internal(mut launch_mode: LaunchMode) -> Result<()> {
                 dxc_path: "dxcompiler.dll".to_string(),
                 dxil_path: "dxil.dll".to_string(),
             });
+        } else if cfg!(feature = "oss_minimal_assets") {
+            log::info!(
+                "Skipping DXC for DirectX shader compilation; OSS minimal build uses FXC fallback"
+            );
         } else {
             log::info!("Skipping DXC for DirectX shader compilation; running in a Parallels VM");
         }

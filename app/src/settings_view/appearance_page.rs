@@ -277,23 +277,25 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
         flags::LEFT_PANEL_VISIBILITY_ACROSS_TABS_FLAG,
     ));
 
-    toggle_binding_pairs.push(ToggleSettingActionPair::new(
-        "agent font matching terminal font",
-        builder(SettingsAction::AppearancePageToggle(
-            AppearancePageAction::ToggleMatchAIToTerminalFontFamily,
-        )),
-        context,
-        flags::MATCH_AI_FONT_TO_TERMINAL_FONT_FLAG,
-    ));
+    if !cfg!(feature = "oss_minimal_assets") {
+        toggle_binding_pairs.push(ToggleSettingActionPair::new(
+            "agent font matching terminal font",
+            builder(SettingsAction::AppearancePageToggle(
+                AppearancePageAction::ToggleMatchAIToTerminalFontFamily,
+            )),
+            context,
+            flags::MATCH_AI_FONT_TO_TERMINAL_FONT_FLAG,
+        ));
 
-    toggle_binding_pairs.push(ToggleSettingActionPair::new(
-        "notebook font size matching terminal font size",
-        builder(SettingsAction::AppearancePageToggle(
-            AppearancePageAction::ToggleMatchNotebookToMonospaceFontSize,
-        )),
-        context,
-        flags::MATCH_NOTEBOOK_FONT_SIZE_TO_TERMINAL_FONT_SIZE_FLAG,
-    ));
+        toggle_binding_pairs.push(ToggleSettingActionPair::new(
+            "notebook font size matching terminal font size",
+            builder(SettingsAction::AppearancePageToggle(
+                AppearancePageAction::ToggleMatchNotebookToMonospaceFontSize,
+            )),
+            context,
+            flags::MATCH_NOTEBOOK_FONT_SIZE_TO_TERMINAL_FONT_SIZE_FLAG,
+        ));
+    }
 
     toggle_binding_pairs.push(
         ToggleSettingActionPair::new(
@@ -311,7 +313,9 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
         ),
     );
 
-    if !FeatureFlag::OpenWarpNewSettingsModes.is_enabled() {
+    if !cfg!(feature = "oss_minimal_assets")
+        && !FeatureFlag::OpenWarpNewSettingsModes.is_enabled()
+    {
         toggle_binding_pairs.push(
             ToggleSettingActionPair::custom(
                 SettingActionPairDescriptions::new(
@@ -1407,11 +1411,12 @@ impl AppearanceSettingsPageView {
         categories.push(Category::new("Blocks", block_settings_widgets));
 
         let font_settings = FontSettings::as_ref(ctx);
-        let mut text_settings_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![
-            Box::new(TerminalFontWidget::default()),
-            Box::new(AIFontWidget::default()),
-            Box::new(NotebookFontSizeWidget::default()),
-        ];
+        let mut text_settings_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
+            vec![Box::new(TerminalFontWidget::default())];
+        if !cfg!(feature = "oss_minimal_assets") {
+            text_settings_widgets.push(Box::new(AIFontWidget::default()));
+            text_settings_widgets.push(Box::new(NotebookFontSizeWidget::default()));
+        }
         if font_settings
             .use_thin_strokes
             .is_supported_on_current_platform()
@@ -1446,7 +1451,9 @@ impl AppearanceSettingsPageView {
         let tab_settings = TabSettings::as_ref(ctx);
         let mut tab_settings_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
             vec![Box::new(TabIndicatorWidget::default())];
-        if !FeatureFlag::OpenWarpNewSettingsModes.is_enabled() {
+        if !cfg!(feature = "oss_minimal_assets")
+            && !FeatureFlag::OpenWarpNewSettingsModes.is_enabled()
+        {
             tab_settings_widgets.push(Box::new(CodeReviewButtonWidget::default()));
         }
         if FeatureFlag::FullScreenZenMode.is_enabled()
@@ -1469,9 +1476,11 @@ impl AppearanceSettingsPageView {
             tab_settings_widgets.push(Box::new(
                 HideTitleBarSearchBarInVerticalTabsWidget::default(),
             ));
-            tab_settings_widgets.push(Box::new(
-                UseLatestUserPromptAsConversationTitleInTabNamesWidget::default(),
-            ));
+            if !cfg!(feature = "oss_minimal_assets") {
+                tab_settings_widgets.push(Box::new(
+                    UseLatestUserPromptAsConversationTitleInTabNamesWidget::default(),
+                ));
+            }
             if FeatureFlag::ConfigurableToolbar.is_enabled() {
                 tab_settings_widgets.push(Box::new(EditToolbarWidget));
             }

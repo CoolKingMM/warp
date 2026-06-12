@@ -296,6 +296,9 @@ impl Display for SettingsSection {
             SettingsSection::Knowledge => write!(f, "Knowledge"),
             SettingsSection::ThirdPartyCLIAgents => write!(f, "Third party CLI agents"),
             SettingsSection::CodeIndexing => write!(f, "Indexing and projects"),
+            SettingsSection::EditorAndCodeReview if cfg!(feature = "oss_minimal_assets") => {
+                write!(f, "Editor and Projects")
+            }
             SettingsSection::EditorAndCodeReview => write!(f, "Editor and Code Review"),
             SettingsSection::CloudEnvironments => write!(f, "Environments"),
             SettingsSection::OzCloudAPIKeys => write!(f, "Oz Cloud API Keys"),
@@ -368,6 +371,21 @@ impl SettingsSection {
     pub fn cloud_platform_subpages() -> &'static [Self] {
         &[Self::CloudEnvironments, Self::OzCloudAPIKeys]
     }
+
+    /// Sections that remain visible in the stripped OSS build.
+    pub fn is_visible_in_oss_minimal(&self) -> bool {
+        !cfg!(feature = "oss_minimal_assets")
+            || matches!(
+                self,
+                Self::Appearance
+                    | Self::Code
+                    | Self::EditorAndCodeReview
+                    | Self::Keybindings
+                    | Self::Warpify
+                    | Self::Privacy
+                    | Self::About
+            )
+    }
 }
 
 impl FromStr for SettingsSection {
@@ -398,7 +416,9 @@ impl FromStr for SettingsSection {
             "Knowledge" => Ok(Self::Knowledge),
             "Third party CLI agents" | "ThirdPartyCLIAgents" => Ok(Self::ThirdPartyCLIAgents),
             "Indexing and projects" | "CodeIndexing" => Ok(Self::CodeIndexing),
-            "Editor and Code Review" | "EditorAndCodeReview" => Ok(Self::EditorAndCodeReview),
+            "Editor and Code Review" | "Editor and Projects" | "EditorAndCodeReview" => {
+                Ok(Self::EditorAndCodeReview)
+            }
             "CloudEnvironments" => Ok(Self::CloudEnvironments),
             "Oz Cloud API Keys" | "OzCloudAPIKeys" => Ok(Self::OzCloudAPIKeys),
             _ => Err(()),
@@ -1115,6 +1135,34 @@ pub struct SettingsView {
 }
 
 impl SettingsView {
+    fn default_initial_section() -> SettingsSection {
+        if cfg!(feature = "oss_minimal_assets") {
+            SettingsSection::Appearance
+        } else {
+            SettingsSection::Account
+        }
+    }
+
+    fn normalize_requested_section(section: SettingsSection) -> SettingsSection {
+        let section = match section {
+            SettingsSection::AI => SettingsSection::WarpAgent,
+            SettingsSection::Code if cfg!(feature = "oss_minimal_assets") => {
+                SettingsSection::EditorAndCodeReview
+            }
+            SettingsSection::Code => SettingsSection::CodeIndexing,
+            SettingsSection::Scripting if !FeatureFlag::WarpControlCli.is_enabled() => {
+                Self::default_initial_section()
+            }
+            other => other,
+        };
+
+        if section.is_visible_in_oss_minimal() {
+            section
+        } else {
+            Self::default_initial_section()
+        }
+    }
+
     pub fn new(page: Option<SettingsSection>, ctx: &mut ViewContext<Self>) -> Self {
         let pane_configuration = ctx.add_model(|_ctx| PaneConfiguration::new("Settings"));
 
@@ -1299,40 +1347,54 @@ impl SettingsView {
 
         // Build sidebar nav items. AI page is presented as an "Agents" umbrella
         // with subpages; the actual AI SettingsPage is hidden from direct sidebar listing.
-        let mut nav_items = vec![
-            SettingsNavItem::Page(SettingsSection::Account),
-            SettingsNavItem::Umbrella(SettingsUmbrella::new(
-                "Agents",
-                SettingsSection::ai_subpages().to_vec(),
-            )),
-            SettingsNavItem::Page(SettingsSection::BillingAndUsage),
-            SettingsNavItem::Umbrella(SettingsUmbrella::new(
-                "Code",
-                vec![
-                    SettingsSection::CodeIndexing,
-                    SettingsSection::EditorAndCodeReview,
-                ],
-            )),
-            SettingsNavItem::Umbrella(SettingsUmbrella::new(
-                "Cloud platform",
-                vec![
-                    SettingsSection::CloudEnvironments,
-                    SettingsSection::OzCloudAPIKeys,
-                ],
-            )),
-            SettingsNavItem::Page(SettingsSection::Teams),
-            SettingsNavItem::Page(SettingsSection::Appearance),
-            SettingsNavItem::Page(SettingsSection::Features),
-            SettingsNavItem::Page(SettingsSection::Keybindings),
-            SettingsNavItem::Page(SettingsSection::Warpify),
-            SettingsNavItem::Page(SettingsSection::Referrals),
-            SettingsNavItem::Page(SettingsSection::SharedBlocks),
-            SettingsNavItem::Page(SettingsSection::WarpDrive),
-            SettingsNavItem::Page(SettingsSection::Privacy),
-            SettingsNavItem::Page(SettingsSection::About),
-        ];
+        let mut nav_items = if cfg!(feature = "oss_minimal_assets") {
+            vec![
+                SettingsNavItem::Page(SettingsSection::Appearance),
+                SettingsNavItem::Umbrella(SettingsUmbrella::new(
+                    "Code",
+                    vec![SettingsSection::EditorAndCodeReview],
+                )),
+                SettingsNavItem::Page(SettingsSection::Keybindings),
+                SettingsNavItem::Page(SettingsSection::Warpify),
+                SettingsNavItem::Page(SettingsSection::Privacy),
+                SettingsNavItem::Page(SettingsSection::About),
+            ]
+        } else {
+            vec![
+                SettingsNavItem::Page(SettingsSection::Account),
+                SettingsNavItem::Umbrella(SettingsUmbrella::new(
+                    "Agents",
+                    SettingsSection::ai_subpages().to_vec(),
+                )),
+                SettingsNavItem::Page(SettingsSection::BillingAndUsage),
+                SettingsNavItem::Umbrella(SettingsUmbrella::new(
+                    "Code",
+                    vec![
+                        SettingsSection::CodeIndexing,
+                        SettingsSection::EditorAndCodeReview,
+                    ],
+                )),
+                SettingsNavItem::Umbrella(SettingsUmbrella::new(
+                    "Cloud platform",
+                    vec![
+                        SettingsSection::CloudEnvironments,
+                        SettingsSection::OzCloudAPIKeys,
+                    ],
+                )),
+                SettingsNavItem::Page(SettingsSection::Teams),
+                SettingsNavItem::Page(SettingsSection::Appearance),
+                SettingsNavItem::Page(SettingsSection::Features),
+                SettingsNavItem::Page(SettingsSection::Keybindings),
+                SettingsNavItem::Page(SettingsSection::Warpify),
+                SettingsNavItem::Page(SettingsSection::Referrals),
+                SettingsNavItem::Page(SettingsSection::SharedBlocks),
+                SettingsNavItem::Page(SettingsSection::WarpDrive),
+                SettingsNavItem::Page(SettingsSection::Privacy),
+                SettingsNavItem::Page(SettingsSection::About),
+            ]
+        };
 
-        if FeatureFlag::WarpControlCli.is_enabled() {
+        if !cfg!(feature = "oss_minimal_assets") && FeatureFlag::WarpControlCli.is_enabled() {
             let shared_blocks_index = nav_items
                 .iter()
                 .position(|item| {
@@ -1346,15 +1408,8 @@ impl SettingsView {
         }
 
         // Resolve the initial page: map internal backing-page sections to their default subpage.
-        let initial_page = match page {
-            Some(SettingsSection::AI) => SettingsSection::WarpAgent,
-            Some(SettingsSection::Code) => SettingsSection::CodeIndexing,
-            Some(SettingsSection::Scripting) if !FeatureFlag::WarpControlCli.is_enabled() => {
-                SettingsSection::Account
-            }
-            Some(section) if section.is_subpage() => section,
-            other => other.unwrap_or_default(),
-        };
+        let initial_page =
+            Self::normalize_requested_section(page.unwrap_or_else(Self::default_initial_section));
 
         // Auto-expand the umbrella if the initial page is one of its subpages.
         if initial_page.is_subpage() {
@@ -1459,6 +1514,9 @@ impl SettingsView {
                     // widget set and run the filter to get a subpage-specific result.
                     self.subpage_filter.clear();
                     for &subpage_section in SettingsSection::ai_subpages() {
+                        if !subpage_section.is_visible_in_oss_minimal() {
+                            continue;
+                        }
                         if subpage_section == SettingsSection::AgentMCPServers {
                             // AgentMCPServers has its own backing page; handled below.
                             continue;
@@ -1475,6 +1533,9 @@ impl SettingsView {
                     }
                     // Do the same for Code subpages.
                     for &subpage_section in SettingsSection::code_subpages() {
+                        if !subpage_section.is_visible_in_oss_minimal() {
+                            continue;
+                        }
                         if let Some(subpage) = CodeSubpage::from_section(subpage_section) {
                             self.code_page_handle.update(ctx, |view, ctx| {
                                 view.set_active_subpage(Some(subpage), ctx);
@@ -1501,7 +1562,7 @@ impl SettingsView {
                 // and for subpages with their own backing page like AgentMCPServers).
                 // Switch AI/Code to all-widgets mode so standalone backing page
                 // filter is correct for pages_filter.
-                if is_search_active {
+                if is_search_active && !cfg!(feature = "oss_minimal_assets") {
                     self.ai_page_handle.update(ctx, |view, ctx| {
                         view.set_active_subpage(None, ctx);
                     });
@@ -1511,6 +1572,23 @@ impl SettingsView {
                 }
 
                 for (i, page) in self.settings_pages.iter().enumerate() {
+                    if !page.section.is_visible_in_oss_minimal() {
+                        self.pages_filter[i] = MatchData::Uncounted(false);
+                        continue;
+                    }
+
+                    if cfg!(feature = "oss_minimal_assets")
+                        && is_search_active
+                        && page.section == SettingsSection::Code
+                    {
+                        self.pages_filter[i] = self
+                            .subpage_filter
+                            .get(&SettingsSection::EditorAndCodeReview)
+                            .copied()
+                            .unwrap_or(MatchData::Uncounted(false));
+                        continue;
+                    }
+
                     self.pages_filter[i] = update_page!(
                         &page.view_handle,
                         |view, ctx| {
@@ -1985,11 +2063,7 @@ impl SettingsView {
     ) {
         // Map internal backing-page sections to their default subpage.
         // External callers should use subpage variants directly.
-        let section = match section {
-            SettingsSection::AI => SettingsSection::WarpAgent,
-            SettingsSection::Code => SettingsSection::CodeIndexing,
-            other => other,
-        };
+        let section = Self::normalize_requested_section(section);
 
         // For AI subpages, the backing page is the AI page. Check it exists.
         let page_section = section.parent_page_section();
@@ -2081,6 +2155,10 @@ impl SettingsView {
     }
 
     fn should_render_page(&self, settings_page: &SettingsPage, app: &AppContext) -> bool {
+        if !settings_page.section.is_visible_in_oss_minimal() {
+            return false;
+        }
+
         match &settings_page.view_handle {
             SettingsPageViewHandle::Main(v) => v.as_ref(app).should_render(app),
             SettingsPageViewHandle::Teams(v) => v.as_ref(app).should_render(app),

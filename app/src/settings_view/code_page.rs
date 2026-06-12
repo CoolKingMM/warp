@@ -114,6 +114,9 @@ impl CodeSubpage {
     pub fn title(&self) -> &'static str {
         match self {
             Self::Indexing => "Codebase Indexing",
+            Self::EditorAndCodeReview if cfg!(feature = "oss_minimal_assets") => {
+                "Editor and Projects"
+            }
             Self::EditorAndCodeReview => "Editor and Code Review",
         }
     }
@@ -195,6 +198,25 @@ pub struct CodeSettingsPageView {
 }
 
 impl CodeSettingsPageView {
+    fn editor_and_projects_category_title() -> &'static str {
+        if cfg!(feature = "oss_minimal_assets") {
+            "Editor and Projects"
+        } else {
+            "Code Editor and Review"
+        }
+    }
+
+    fn append_editor_project_widgets(widgets: &mut Vec<Box<dyn SettingsWidget<View = Self>>>) {
+        if !cfg!(feature = "oss_minimal_assets") {
+            widgets.push(Box::new(AutoOpenCodeReviewPaneCodeWidget::default()));
+            widgets.push(Box::new(CodeReviewPanelToggleWidget::default()));
+            widgets.push(Box::new(CodeReviewDiffStatsToggleWidget::default()));
+        }
+
+        widgets.push(Box::new(ProjectExplorerToggleWidget::default()));
+        widgets.push(Box::new(GlobalSearchToggleWidget::default()));
+    }
+
     pub fn new(ctx: &mut ViewContext<CodeSettingsPageView>) -> Self {
         let index_manager = CodebaseIndexManager::handle(ctx);
         let codebase_count = index_manager
@@ -364,18 +386,15 @@ impl CodeSettingsPageView {
             let mut code_editor_review_widgets: Vec<
                 Box<dyn SettingsWidget<View = Self>>,
             > = vec![];
-            code_editor_review_widgets.extend([
-                Box::new(AutoOpenCodeReviewPaneCodeWidget::default())
-                    as Box<dyn SettingsWidget<View = Self>>,
-                Box::new(CodeReviewPanelToggleWidget::default()),
-                Box::new(CodeReviewDiffStatsToggleWidget::default()),
-                Box::new(ProjectExplorerToggleWidget::default()),
-                Box::new(GlobalSearchToggleWidget::default()),
-            ]);
-            let categories = vec![
-                Category::new("Codebase Indexing", codebase_indexing_widgets),
-                Category::new("Code Editor and Review", code_editor_review_widgets),
-            ];
+            Self::append_editor_project_widgets(&mut code_editor_review_widgets);
+            let mut categories = vec![];
+            if !cfg!(feature = "oss_minimal_assets") {
+                categories.push(Category::new("Codebase Indexing", codebase_indexing_widgets));
+            }
+            categories.push(Category::new(
+                Self::editor_and_projects_category_title(),
+                code_editor_review_widgets,
+            ));
             PageType::new_categorized(categories, None)
         } else {
             #[cfg(feature = "local_fs")]
@@ -447,14 +466,7 @@ impl CodeSettingsPageView {
                     CodeSubpage::EditorAndCodeReview => {
                         #[cfg(feature = "local_fs")]
                         widgets.push(Box::new(ExternalEditorCodeWidget));
-                        widgets.extend([
-                            Box::new(AutoOpenCodeReviewPaneCodeWidget::default())
-                                as Box<dyn SettingsWidget<View = Self>>,
-                            Box::new(CodeReviewPanelToggleWidget::default()),
-                            Box::new(CodeReviewDiffStatsToggleWidget::default()),
-                            Box::new(ProjectExplorerToggleWidget::default()),
-                            Box::new(GlobalSearchToggleWidget::default()),
-                        ]);
+                        Self::append_editor_project_widgets(&mut widgets);
                     }
                 }
                 // Subpage widgets render their own subheader-sized titles,
@@ -496,18 +508,15 @@ impl CodeSettingsPageView {
             let mut code_editor_review_widgets: Vec<
                 Box<dyn SettingsWidget<View = Self>>,
             > = vec![];
-            code_editor_review_widgets.extend([
-                Box::new(AutoOpenCodeReviewPaneCodeWidget::default())
-                    as Box<dyn SettingsWidget<View = Self>>,
-                Box::new(CodeReviewPanelToggleWidget::default()),
-                Box::new(CodeReviewDiffStatsToggleWidget::default()),
-                Box::new(ProjectExplorerToggleWidget::default()),
-                Box::new(GlobalSearchToggleWidget::default()),
-            ]);
-            let categories = vec![
-                Category::new("Codebase Indexing", codebase_indexing_widgets),
-                Category::new("Code Editor and Review", code_editor_review_widgets),
-            ];
+            Self::append_editor_project_widgets(&mut code_editor_review_widgets);
+            let mut categories = vec![];
+            if !cfg!(feature = "oss_minimal_assets") {
+                categories.push(Category::new("Codebase Indexing", codebase_indexing_widgets));
+            }
+            categories.push(Category::new(
+                Self::editor_and_projects_category_title(),
+                code_editor_review_widgets,
+            ));
             PageType::new_categorized(categories, None)
         } else {
             let manual_add_directory_button = ctx.add_typed_action_view(|_| {
@@ -907,7 +916,8 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
     context: &ContextPredicate,
     builder: fn(SettingsAction) -> T,
 ) {
-    if FeatureFlag::FullSourceCodeEmbedding.is_enabled() {
+    if !cfg!(feature = "oss_minimal_assets") && FeatureFlag::FullSourceCodeEmbedding.is_enabled()
+    {
         ToggleSettingActionPair::add_toggle_setting_action_pairs_as_bindings(
             vec![ToggleSettingActionPair::new(
                 "codebase index",
@@ -934,8 +944,10 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
     }
 
     if FeatureFlag::OpenWarpNewSettingsModes.is_enabled() {
-        ToggleSettingActionPair::add_toggle_setting_action_pairs_as_bindings(
-            vec![
+        let mut toggle_pairs = vec![];
+
+        if !cfg!(feature = "oss_minimal_assets") {
+            toggle_pairs.extend([
                 ToggleSettingActionPair::new(
                     "auto open code review panel",
                     builder(SettingsAction::Code(
@@ -960,25 +972,29 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
                     context,
                     flags::SHOW_CODE_REVIEW_DIFF_STATS_FLAG,
                 ),
-                ToggleSettingActionPair::new(
-                    "project explorer",
-                    builder(SettingsAction::Code(
-                        CodeSettingsPageAction::ToggleProjectExplorer,
-                    )),
-                    context,
-                    flags::SHOW_PROJECT_EXPLORER,
-                ),
-                ToggleSettingActionPair::new(
-                    "global file search",
-                    builder(SettingsAction::Code(
-                        CodeSettingsPageAction::ToggleGlobalSearch,
-                    )),
-                    context,
-                    flags::SHOW_GLOBAL_SEARCH,
-                ),
-            ],
-            app,
-        );
+            ]);
+        }
+
+        toggle_pairs.extend([
+            ToggleSettingActionPair::new(
+                "project explorer",
+                builder(SettingsAction::Code(
+                    CodeSettingsPageAction::ToggleProjectExplorer,
+                )),
+                context,
+                flags::SHOW_PROJECT_EXPLORER,
+            ),
+            ToggleSettingActionPair::new(
+                "global file search",
+                builder(SettingsAction::Code(
+                    CodeSettingsPageAction::ToggleGlobalSearch,
+                )),
+                context,
+                flags::SHOW_GLOBAL_SEARCH,
+            ),
+        ]);
+
+        ToggleSettingActionPair::add_toggle_setting_action_pairs_as_bindings(toggle_pairs, app);
     }
 }
 
@@ -2652,11 +2668,19 @@ impl SettingsPageMeta for CodeSettingsPageView {
     }
 
     fn should_render(&self, _ctx: &AppContext) -> bool {
+        if cfg!(feature = "oss_minimal_assets") {
+            return true;
+        }
+
         FeatureFlag::FullSourceCodeEmbedding.is_enabled()
             || FeatureFlag::OpenWarpNewSettingsModes.is_enabled()
     }
 
     fn on_page_selected(&mut self, _: bool, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_minimal_assets") {
+            return;
+        }
+
         // We want to immediately see if the user is part of a workspace rather than wait for the next poll.
         std::mem::drop(
             TeamUpdateManager::handle(ctx)

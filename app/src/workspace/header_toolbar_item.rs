@@ -58,6 +58,15 @@ impl HeaderToolbarItemKind {
     /// (feature flags, compile-time features, AI enabled, auth state).
     /// Does not check user show/hide preferences — use `is_available` for that.
     pub fn is_supported(&self, app: &AppContext) -> bool {
+        if cfg!(feature = "oss_minimal_assets")
+            && matches!(
+                self,
+                Self::AgentManagement | Self::CodeReview | Self::NotificationsMailbox
+            )
+        {
+            return false;
+        }
+
         match self {
             Self::TabsPanel => {
                 FeatureFlag::VerticalTabs.is_enabled()
@@ -98,15 +107,27 @@ impl HeaderToolbarItemKind {
     }
 
     pub fn default_left() -> Vec<Self> {
+        if cfg!(feature = "oss_minimal_assets") {
+            return vec![Self::ToolsPanel];
+        }
+
         vec![Self::TabsPanel, Self::ToolsPanel, Self::AgentManagement]
     }
 
     pub fn default_right() -> Vec<Self> {
+        if cfg!(feature = "oss_minimal_assets") {
+            return Vec::new();
+        }
+
         vec![Self::CodeReview, Self::NotificationsMailbox]
     }
 
     /// All toolbar item variants (availability filtering is done at the call site).
     pub fn all_items() -> Vec<Self> {
+        if cfg!(feature = "oss_minimal_assets") {
+            return vec![Self::TabsPanel, Self::ToolsPanel];
+        }
+
         vec![
             Self::TabsPanel,
             Self::ToolsPanel,

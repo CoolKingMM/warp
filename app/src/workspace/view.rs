@@ -2384,7 +2384,8 @@ impl Workspace {
 
     pub(crate) fn show_session_config_modal(&mut self, ctx: &mut ViewContext<Self>) {
         // Configure the modal to hide Oz when AI is disabled.
-        let show_oz = AISettings::as_ref(ctx).is_any_ai_enabled(ctx);
+        let show_oz =
+            !cfg!(feature = "oss_slim") && AISettings::as_ref(ctx).is_any_ai_enabled(ctx);
         self.session_config_modal.view.update(ctx, |modal, ctx| {
             modal.body().update(ctx, |body, ctx| {
                 body.configure(show_oz);
@@ -3040,6 +3041,9 @@ impl Workspace {
             BlockOnboarding::get_group(ctx),
             Some(BlockOnboarding::VariantOne) | Some(BlockOnboarding::VariantTwo)
         ) {
+            should_show_ai_assistant_warm_welcome = false;
+        }
+        if cfg!(feature = "oss_slim") {
             should_show_ai_assistant_warm_welcome = false;
         }
 
@@ -4591,6 +4595,12 @@ impl Workspace {
     }
 
     fn toggle_ai_assistant_panel(&mut self, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            self.current_workspace_state.is_ai_assistant_panel_open = false;
+            self.should_show_ai_assistant_warm_welcome = false;
+            return;
+        }
+
         // Now that the user has interacted with the panel, we can close
         // the dialogue and mark it as dismissed.
         if self.should_show_ai_assistant_warm_welcome {
@@ -6368,9 +6378,14 @@ impl Workspace {
     ) -> Vec<MenuItem<WorkspaceAction>> {
         let mut menu_items = vec![];
 
-        let is_any_ai_enabled = AISettings::as_ref(ctx).is_any_ai_enabled(ctx);
+        let is_any_ai_enabled =
+            !cfg!(feature = "oss_slim") && AISettings::as_ref(ctx).is_any_ai_enabled(ctx);
         let ai_settings = AISettings::as_ref(ctx);
-        let effective_default = ai_settings.default_session_mode(ctx);
+        let effective_default = if cfg!(feature = "oss_slim") {
+            DefaultSessionMode::Terminal
+        } else {
+            ai_settings.default_session_mode(ctx)
+        };
         let default_tab_config_path = ai_settings.default_tab_config_path().to_string();
         let shortcut_label = keybinding_name_to_display_string(NEW_TAB_BINDING_NAME, ctx);
         let reopen_closed_session_shortcut_label =
@@ -10497,7 +10512,8 @@ impl Workspace {
             .unwrap_or_else(|| repo_path.clone());
         let config_name = format!("Worktree: {repo_display_name}");
         // Use the user's default session mode to decide pane type.
-        let pane_type = if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+        let pane_type = if !cfg!(feature = "oss_slim")
+            && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
             && AISettings::as_ref(ctx).default_session_mode(ctx) == DefaultSessionMode::Agent
         {
             "agent"
@@ -11993,7 +12009,8 @@ impl Workspace {
         let should_enter_agent_view = matches!(
             default_session_mode_behavior,
             DefaultSessionModeBehavior::Apply
-        ) && conversation_restoration.is_none()
+        ) && !cfg!(feature = "oss_slim")
+            && conversation_restoration.is_none()
             && AISettings::as_ref(ctx).default_session_mode(ctx) == DefaultSessionMode::Agent;
         #[cfg(feature = "local_tty")]
         let is_docker_sandbox = chosen_shell
@@ -13468,7 +13485,9 @@ impl Workspace {
         let is_tab_menu_open = self.show_tab_bar_overflow_menu
             || (self.show_tab_right_click_menu.is_some() && !is_vertical_tabs_active)
             || (self.show_new_session_dropdown_menu.is_some() && !is_vertical_tabs_active)
-            || (!FeatureFlag::AgentMode.is_enabled() && self.should_show_ai_assistant_warm_welcome)
+            || (!cfg!(feature = "oss_slim")
+                && !FeatureFlag::AgentMode.is_enabled()
+                && self.should_show_ai_assistant_warm_welcome)
             || self.is_user_menu_open
             || self.tab_bar_pinned_by_popup;
 
@@ -17073,7 +17092,9 @@ impl Workspace {
     }
 
     fn run_tab_config_skill(&mut self, path: &Path, ctx: &mut ViewContext<Self>) {
-        if !AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+        if cfg!(feature = "oss_slim")
+            || !AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+        {
             return;
         }
 
@@ -17331,7 +17352,9 @@ impl Workspace {
                         );
                     }
                     OpenWarpAI => {
-                        if !AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+                        if cfg!(feature = "oss_slim")
+                            || !AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+                        {
                             return;
                         }
 
@@ -18636,6 +18659,12 @@ impl Workspace {
     }
 
     fn ask_ai_assistant(&mut self, ask_type: &AskAIType, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            self.current_workspace_state.is_ai_assistant_panel_open = false;
+            self.should_show_ai_assistant_warm_welcome = false;
+            return;
+        }
+
         if !self.current_workspace_state.is_ai_assistant_panel_open {
             self.toggle_ai_assistant_panel(ctx);
         }
@@ -21792,7 +21821,9 @@ impl Workspace {
         if self.current_workspace_state.is_right_panel_open() {
             let right_panel_content = if self.current_workspace_state.is_resource_center_open {
                 Some(self.render_panel(app, self.render_resource_center(), &PanelPosition::Right))
-            } else if self.current_workspace_state.is_ai_assistant_panel_open {
+            } else if !cfg!(feature = "oss_slim")
+                && self.current_workspace_state.is_ai_assistant_panel_open
+            {
                 Some(self.render_panel(
                     app,
                     ChildView::new(&self.ai_assistant_panel).finish(),
@@ -22707,6 +22738,7 @@ impl Workspace {
             views.push(ToolPanelView::ProjectExplorer);
         }
         if FeatureFlag::AgentViewConversationListView.is_enabled()
+            && !cfg!(feature = "oss_slim")
             && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
             && *AISettings::as_ref(ctx).show_conversation_history
         {
@@ -22895,7 +22927,11 @@ impl TypedActionView for Workspace {
             CloseTabsAboveGroup(group_id) => self.close_tabs_above_group(*group_id, ctx),
             CloseTabsBelowGroup(group_id) => self.close_tabs_below_group(*group_id, ctx),
             AddDefaultTab => {
-                let effective_mode = AISettings::as_ref(ctx).default_session_mode(ctx);
+                let effective_mode = if cfg!(feature = "oss_slim") {
+                    DefaultSessionMode::Terminal
+                } else {
+                    AISettings::as_ref(ctx).default_session_mode(ctx)
+                };
                 match effective_mode {
                     DefaultSessionMode::TabConfig => {
                         let ai_settings = AISettings::as_ref(ctx);
@@ -22947,8 +22983,16 @@ impl TypedActionView for Workspace {
                 self.add_tab_with_shell(shell.clone(), *source, ctx)
             }
             AddGetStartedTab => self.add_get_started_tab(ctx),
-            AddAmbientAgentTab => self.add_ambient_agent_tab(ctx),
-            AddAgentTab => self.add_terminal_tab_with_new_agent_view(ctx),
+            AddAmbientAgentTab => {
+                if !cfg!(feature = "oss_slim") {
+                    self.add_ambient_agent_tab(ctx);
+                }
+            }
+            AddAgentTab => {
+                if !cfg!(feature = "oss_slim") {
+                    self.add_terminal_tab_with_new_agent_view(ctx);
+                }
+            }
             AddDockerSandboxTab => self.add_docker_sandbox_tab(ctx),
             StartAgentOnboardingTutorial(tutorial) => {
                 self.start_agent_onboarding_tutorial(tutorial.clone(), ctx)
@@ -23802,6 +23846,10 @@ impl TypedActionView for Workspace {
                 entrypoint,
                 zero_state_prompt_suggestion_type,
             } => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 send_telemetry_from_ctx!(
                     TelemetryEvent::AgentModeClickedEntrypoint {
                         entrypoint: entrypoint.clone(),
@@ -23815,6 +23863,10 @@ impl TypedActionView for Workspace {
                 entrypoint,
                 zero_state_prompt_suggestion_type,
             } => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 send_telemetry_from_ctx!(
                     TelemetryEvent::AgentModeClickedEntrypoint {
                         entrypoint: entrypoint.clone(),
@@ -23825,6 +23877,10 @@ impl TypedActionView for Workspace {
                 self.add_terminal_pane_in_ai_mode(*zero_state_prompt_suggestion_type, ctx);
             }
             OpenCloudAgentSetupGuide => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
                 {
@@ -23837,16 +23893,18 @@ impl TypedActionView for Workspace {
                 }
             }
             ToggleAIAssistant => {
-                self.toggle_ai_assistant_panel(ctx);
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::ToggleWarpAI {
-                        opened: self.current_workspace_state.is_ai_assistant_panel_open
-                    },
-                    ctx
-                );
+                if !cfg!(feature = "oss_slim") {
+                    self.toggle_ai_assistant_panel(ctx);
+                    send_telemetry_from_ctx!(
+                        TelemetryEvent::ToggleWarpAI {
+                            opened: self.current_workspace_state.is_ai_assistant_panel_open
+                        },
+                        ctx
+                    );
+                }
             }
             ClickedAIAssistantIcon => {
-                if !FeatureFlag::AgentMode.is_enabled() {
+                if !cfg!(feature = "oss_slim") && !FeatureFlag::AgentMode.is_enabled() {
                     self.toggle_ai_assistant_panel(ctx);
                     if self.current_workspace_state.is_ai_assistant_panel_open {
                         send_telemetry_from_ctx!(
@@ -23859,17 +23917,21 @@ impl TypedActionView for Workspace {
                 }
             }
             ShowAIAssistantWarmWelcome => {
-                self.should_show_ai_assistant_warm_welcome = true;
-                ctx.notify();
+                if !cfg!(feature = "oss_slim") {
+                    self.should_show_ai_assistant_warm_welcome = true;
+                    ctx.notify();
+                }
             }
             ClickedAIAssistantWarmWelcome => {
-                self.toggle_ai_assistant_panel(ctx);
-                send_telemetry_from_ctx!(
-                    TelemetryEvent::OpenedWarpAI {
-                        source: OpenedWarpAISource::WarmWelcome
-                    },
-                    ctx
-                );
+                if !cfg!(feature = "oss_slim") {
+                    self.toggle_ai_assistant_panel(ctx);
+                    send_telemetry_from_ctx!(
+                        TelemetryEvent::OpenedWarpAI {
+                            source: OpenedWarpAISource::WarmWelcome
+                        },
+                        ctx
+                    );
+                }
             }
             DragTab {
                 tab_index,
@@ -25023,11 +25085,11 @@ impl View for Workspace {
             context.set.insert("IsOnline");
         }
 
-        if AISettings::as_ref(app).is_any_ai_enabled(app) {
+        if !cfg!(feature = "oss_slim") && AISettings::as_ref(app).is_any_ai_enabled(app) {
             context.set.insert(flags::IS_ANY_AI_ENABLED);
         }
 
-        if AISettings::as_ref(app).is_active_ai_enabled(app) {
+        if !cfg!(feature = "oss_slim") && AISettings::as_ref(app).is_active_ai_enabled(app) {
             context.set.insert(flags::IS_ACTIVE_AI_ENABLED);
         }
         if AISettings::as_ref(app).is_voice_input_enabled(app)
@@ -25094,7 +25156,8 @@ impl View for Workspace {
             context.set.insert(flags::ENABLE_WARP_DRIVE);
         }
 
-        if AISettings::as_ref(app).is_any_ai_enabled(app)
+        if !cfg!(feature = "oss_slim")
+            && AISettings::as_ref(app).is_any_ai_enabled(app)
             && *AISettings::as_ref(app).show_conversation_history
         {
             context.set.insert(flags::SHOW_CONVERSATION_HISTORY);
@@ -26228,7 +26291,8 @@ impl View for Workspace {
             }
         }
 
-        if !FeatureFlag::AgentMode.is_enabled()
+        if !cfg!(feature = "oss_slim")
+            && !FeatureFlag::AgentMode.is_enabled()
             && AISettings::as_ref(app).is_any_ai_enabled(app)
             && self.should_show_ai_assistant_warm_welcome
             && !self.current_workspace_state.is_changelog_modal_open

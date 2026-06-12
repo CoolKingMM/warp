@@ -16815,7 +16815,7 @@ impl TerminalView {
                         ))
                         .into_item(),
                 ];
-                if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+                if !cfg!(feature = "oss_slim") && AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
                     fields.extend([
                         MenuItem::Separator,
                         MenuItemFields::new(if FeatureFlag::AgentMode.is_enabled() {
@@ -16970,7 +16970,7 @@ impl TerminalView {
                     );
                 }
 
-                if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+                if !cfg!(feature = "oss_slim") && AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
                     if FeatureFlag::AgentMode.is_enabled() {
                         // We can only attach selected blocks if the input box is visible.
                         if self.is_input_box_visible(&model, ctx) {
@@ -17641,7 +17641,7 @@ impl TerminalView {
                 .into_item(),
         ]);
 
-        if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+        if !cfg!(feature = "oss_slim") && AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
             items.push(
                 MenuItemFields::new("AI command search")
                     .with_on_select_action(TerminalAction::InputContextMenuItem(
@@ -17841,7 +17841,7 @@ impl TerminalView {
                     .with_key_shortcut_label(Some("⌘-C"))
                     .into_item(),
             );
-            if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+            if !cfg!(feature = "oss_slim") && AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
                 menu_items.extend([
                     MenuItem::Separator,
                     MenuItemFields::new(if FeatureFlag::AgentMode.is_enabled() {
@@ -19429,6 +19429,11 @@ impl TerminalView {
     /// Handle AI entrypoints, routing to AI in blocklist when possible and falling back to the AI
     /// Assistant panel.
     fn ask_ai(&mut self, ask_source: &AskAISource, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            self.close_context_menu(ctx, false);
+            return;
+        }
+
         let semantic_selection = SemanticSelection::as_ref(ctx);
         let selection_string = self.model.lock().selection_to_string(
             semantic_selection,
@@ -24964,8 +24969,16 @@ impl TerminalView {
             SelectAll => self.select_all_text_from_input(ctx),
             Paste => self.paste_in_input(ctx),
             ShowCommandSearch => self.command_search_from_input(ctx),
-            AskWarpAI => self.ask_ai(&AskAISource::SelectedInputText, ctx),
-            ShowAICommandSearch => self.ai_command_search_from_input(ctx),
+            AskWarpAI => {
+                if !cfg!(feature = "oss_slim") {
+                    self.ask_ai(&AskAISource::SelectedInputText, ctx);
+                }
+            }
+            ShowAICommandSearch => {
+                if !cfg!(feature = "oss_slim") {
+                    self.ai_command_search_from_input(ctx);
+                }
+            }
             SaveAsWorkflow => self.save_as_workflow_from_input(ctx),
             ToggleInputHintText => self.toggle_input_hint_text(ctx),
         }
@@ -26675,6 +26688,10 @@ impl TypedActionView for TerminalView {
             }
             OpenBlockListContextMenu => self.open_block_list_context_menu_via_keybinding(ctx),
             AskAIAssistant { block_index } => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 if FeatureFlag::AgentMode.is_enabled() {
                     send_telemetry_from_ctx!(
                         TelemetryEvent::AgentModeClickedEntrypoint {
@@ -28222,7 +28239,7 @@ impl View for TerminalView {
             context.set.insert(flags::HAS_PENDING_PROMPT_SUGGESTION);
         }
 
-        if AISettings::as_ref(app).is_any_ai_enabled(app) {
+        if !cfg!(feature = "oss_slim") && AISettings::as_ref(app).is_any_ai_enabled(app) {
             context.set.insert(flags::IS_ANY_AI_ENABLED);
         }
 

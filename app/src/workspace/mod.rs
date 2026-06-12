@@ -1164,7 +1164,7 @@ pub fn init(app: &mut AppContext) {
                 zero_state_prompt_suggestion_type: None,
             },
         )
-        .with_enabled(|| FeatureFlag::AgentMode.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::AgentMode.is_enabled())
         .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_custom_action(CustomAction::NewAgentModePane),
@@ -1173,7 +1173,7 @@ pub fn init(app: &mut AppContext) {
             "Toggle Warp AI",
             WorkspaceAction::ToggleAIAssistant,
         )
-        .with_enabled(|| !FeatureFlag::AgentMode.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && !FeatureFlag::AgentMode.is_enabled())
         .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         // We use the same custom action as AM so that we don't have

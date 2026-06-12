@@ -6676,7 +6676,10 @@ impl Input {
         });
 
         // Now handle the default (empty prefix) placeholder
-        if toggled_on && AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+        if toggled_on
+            && !cfg!(feature = "oss_slim")
+            && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+        {
             if FeatureFlag::AgentMode.is_enabled() {
                 // agent_mode_hint_text now handles caching internally
                 let hint_text = self.agent_mode_hint_text(ctx);
@@ -9814,7 +9817,10 @@ impl Input {
                 });
 
                 // Force AI mode if buffer contains any attachment patterns (blocks, drive objects, diffs)
-                if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) && edit_origin.is_user() {
+                if !cfg!(feature = "oss_slim")
+                    && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+                    && edit_origin.is_user()
+                {
                     let buffer_text = self.buffer_text(ctx);
                     if Self::buffer_contains_attachment_patterns(&buffer_text) {
                         self.ensure_agent_mode_for_ai_features(
@@ -9959,7 +9965,8 @@ impl Input {
                     }
                 }
 
-                if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
+                if !cfg!(feature = "oss_slim")
+                    && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && self.editor_starts_with_command_search_trigger(ctx)
                     && *edit_origin == EditOrigin::UserTyped
                     && !self.ai_input_model.as_ref(ctx).is_ai_input_enabled()
@@ -9979,6 +9986,7 @@ impl Input {
                 // If the last buffer didn't start with the AI input prefix and the current buffer does, then enable AI input.
                 if FeatureFlag::AgentMode.is_enabled()
                     && !FeatureFlag::AgentView.is_enabled()
+                    && !cfg!(feature = "oss_slim")
                     && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && (!is_ai_input_enabled || !is_input_mode_locked)
                 {
@@ -10335,6 +10343,7 @@ impl Input {
             EditorEvent::BufferReplaced => {
                 let ai_input_model = self.ai_input_model.as_ref(ctx);
                 if FeatureFlag::AgentMode.is_enabled()
+                    && !cfg!(feature = "oss_slim")
                     && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && !ai_input_model.is_ai_input_enabled()
                     && ai_input_model.is_input_type_locked()
@@ -10912,7 +10921,7 @@ impl Input {
         let content = ctx.clipboard().read();
 
         // If AI is disabled, attachment isn't possible
-        if !AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
+        if cfg!(feature = "oss_slim") || !AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
             self.insert_clipboard_text_content(ctx, content);
             return;
         }
@@ -13033,6 +13042,7 @@ impl Input {
             });
             return;
         } else if FeatureFlag::AgentMode.is_enabled()
+            && !cfg!(feature = "oss_slim")
             && AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
             && (self.ai_input_model.as_ref(ctx).is_ai_input_enabled()
                 || self.is_cloud_mode_input_v2_composing(ctx))
@@ -15372,6 +15382,10 @@ impl Input {
     /// Returns whether AI command search should be displayed for the given
     /// editor contents.
     fn editor_starts_with_command_search_trigger(&self, ctx: &AppContext) -> bool {
+        if cfg!(feature = "oss_slim") {
+            return false;
+        }
+
         self.buffer_text(ctx).starts_with(AI_COMMAND_SEARCH_TRIGGER)
     }
 
@@ -15389,6 +15403,10 @@ impl Input {
     /// inserting a leading #, which is the trigger when typed manually by the
     /// user).
     fn show_ai_command_search(&mut self, ctx: &mut ViewContext<Input>) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         // Should not show ai command search for read-only viewers
         if self.model.lock().shared_session_status().is_reader() {
             return;
@@ -15792,7 +15810,7 @@ impl View for Input {
             ctx.set.insert(flags::EMPTY_INPUT_BUFFER);
         }
 
-        if ai_settings.is_any_ai_enabled(app) {
+        if !cfg!(feature = "oss_slim") && ai_settings.is_any_ai_enabled(app) {
             ctx.set.insert(flags::IS_ANY_AI_ENABLED);
         }
 

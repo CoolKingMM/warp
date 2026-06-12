@@ -1134,7 +1134,7 @@ impl BlockListElement {
             .finish(),
         );
 
-        if AISettings::as_ref(app).is_any_ai_enabled(app) {
+        if !cfg!(feature = "oss_slim") && AISettings::as_ref(app).is_any_ai_enabled(app) {
             let icon = Container::new(
                 ConstrainedBox::new(if FeatureFlag::AgentView.is_enabled() {
                     UIIcon::Icon::Paperclip

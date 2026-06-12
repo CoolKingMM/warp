@@ -13,6 +13,14 @@ use warpui_core::AssetProvider;
 #[cfg_attr(feature = "oss_minimal_assets", exclude = "async/png/*.png")]
 #[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/png/blue.png")]
 #[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/png/dev.png")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/png/local.png")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/svg/conversation-context-*.svg")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/svg/context-window-*.svg")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/svg/figma-bg.svg")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/svg/openai.svg")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/svg/credit-card.svg")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/svg/referral-*.svg")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/svg/loading-agents-*.svg")]
 // Excludes take precedence.
 // Standalone CLI builds (the `oz` tarball) are headless and never render the
 // onboarding/theme imagery in `async/`, so we exclude those bytes from the

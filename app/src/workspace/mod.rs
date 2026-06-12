@@ -87,23 +87,30 @@ pub fn init(app: &mut AppContext) {
     rewind_confirmation_dialog::init(app);
     delete_conversation_confirmation_dialog::init(app);
     crate::tab_configs::remove_confirmation_dialog::init(app);
+    #[cfg(not(feature = "oss_slim"))]
     hoa_onboarding::init(app);
     tab_configs::session_config_modal::init(app);
-    view::launch_modal::oz_launch::init(app);
-    view::openwarp_launch_modal::init(app);
-    view::orchestration_launch_modal::init(app);
-    view::cloud_agent_capacity_modal::init(app);
-    view::codex_modal::init(app);
-    view::free_tier_limit_hit_modal::init(app);
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        view::launch_modal::oz_launch::init(app);
+        view::openwarp_launch_modal::init(app);
+        view::orchestration_launch_modal::init(app);
+        view::cloud_agent_capacity_modal::init(app);
+        view::codex_modal::init(app);
+        view::free_tier_limit_hit_modal::init(app);
+    }
     view::global_search::view::GlobalSearchView::init(app);
     view::right_panel::RightPanelView::init(app);
+    #[cfg(not(feature = "oss_slim"))]
     header_toolbar_editor::init(app);
+    #[cfg(not(feature = "oss_slim"))]
     view::conversation_list::view::register_conversation_list_view_bindings(app);
 
     settings_view::init_actions_from_parent_view(app, &id!("Workspace"), |settings_action| {
         WorkspaceAction::DispatchToSettingsTab(settings_action)
     });
     global_actions::init_global_actions(app);
+    #[cfg(not(feature = "oss_slim"))]
     notebooks::init(app);
     code::init(app);
     sync_inputs::init(app);
@@ -677,6 +684,7 @@ pub fn init(app: &mut AppContext) {
         )
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_custom_action(CustomAction::NewAgentTab)
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(
             id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED) & !id!("Workspace_PaneDragging"),
         ),
@@ -690,7 +698,9 @@ pub fn init(app: &mut AppContext) {
             id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED) & !id!("Workspace_PaneDragging"),
         )
         .with_enabled(|| {
-            FeatureFlag::AgentView.is_enabled() && FeatureFlag::CloudMode.is_enabled()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentView.is_enabled()
+                && FeatureFlag::CloudMode.is_enabled()
         }),
         EditableBinding::new(
             "workspace:toggle_left_panel",
@@ -705,7 +715,7 @@ pub fn init(app: &mut AppContext) {
                 .with_custom_description(bindings::MAC_MENUS_CONTEXT, "Toggle Code Review"),
             WorkspaceAction::ToggleRightPanel,
         )
-        .with_enabled(|| cfg!(feature = "local_fs"))
+        .with_enabled(|| cfg!(feature = "local_fs") && !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace"))
         .with_mac_key_binding("cmd-shift-+")
         .with_linux_or_windows_key_binding("ctrl-shift-+"),
@@ -734,7 +744,10 @@ pub fn init(app: &mut AppContext) {
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())
         .with_context_predicate(id!("Workspace") & id!(flags::SHOW_CONVERSATION_HISTORY))
-        .with_enabled(|| FeatureFlag::AgentViewConversationListView.is_enabled())
+        .with_enabled(|| {
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentViewConversationListView.is_enabled()
+        })
         .with_custom_action(CustomAction::ToggleConversationListView),
         EditableBinding::new(
             LEFT_PANEL_GLOBAL_SEARCH_BINDING_NAME,
@@ -974,6 +987,7 @@ pub fn init(app: &mut AppContext) {
             WorkspaceAction::ToggleNotifications,
         )
         .with_group(bindings::BindingGroup::Notifications.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace") & !id!("Notifications_Enabled")),
         EditableBinding::new(
             "workspace:toggle_notifications_off",
@@ -981,6 +995,7 @@ pub fn init(app: &mut AppContext) {
             WorkspaceAction::ToggleNotifications,
         )
         .with_group(bindings::BindingGroup::Notifications.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace") & id!("Notifications_Enabled")),
         EditableBinding::new(
             "workspace:toggle_navigation_palette",
@@ -1034,6 +1049,7 @@ pub fn init(app: &mut AppContext) {
             },
         )
         .with_context_predicate(id!("Workspace"))
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_custom_action(CustomAction::SearchDrive),
     ]);
 
@@ -1285,7 +1301,7 @@ pub fn init(app: &mut AppContext) {
                 .with_custom_description(bindings::MAC_MENUS_CONTEXT, "Open AI Rules"),
             WorkspaceAction::OpenAIFactCollection,
         )
-        .with_enabled(|| FeatureFlag::AIRules.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::AIRules.is_enabled())
         .with_custom_action(CustomAction::OpenAIFactCollection)
         .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))
         .with_group(bindings::BindingGroup::WarpAi.as_str()),
@@ -1298,7 +1314,9 @@ pub fn init(app: &mut AppContext) {
         WorkspaceAction::OpenMCPServerCollection,
     )
     .with_enabled(|| {
-        FeatureFlag::McpServer.is_enabled() && ContextFlag::ShowMCPServers.is_enabled()
+        !cfg!(feature = "oss_slim")
+            && FeatureFlag::McpServer.is_enabled()
+            && ContextFlag::ShowMCPServers.is_enabled()
     })
     .with_custom_action(CustomAction::OpenMCPServerCollection)
     .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))
@@ -1309,7 +1327,7 @@ pub fn init(app: &mut AppContext) {
         "Jump to latest agent task",
         WorkspaceAction::JumpToLatestToast,
     )
-    .with_enabled(|| FeatureFlag::AgentMode.is_enabled())
+    .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::AgentMode.is_enabled())
     .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))
     .with_mac_key_binding("cmd-shift-G")
     .with_linux_or_windows_key_binding("ctrl-shift-G")
@@ -1320,7 +1338,7 @@ pub fn init(app: &mut AppContext) {
         "Toggle notification mailbox",
         WorkspaceAction::ToggleNotificationMailbox { select_first: true },
     )
-    .with_enabled(|| FeatureFlag::HOANotifications.is_enabled())
+    .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::HOANotifications.is_enabled())
     .with_context_predicate(id!("Workspace"))
     .with_mac_key_binding("cmd-shift-U")
     .with_linux_or_windows_key_binding("ctrl-shift-U")
@@ -1334,7 +1352,9 @@ pub fn init(app: &mut AppContext) {
         "Toggle the agent management view",
         WorkspaceAction::ToggleAgentManagementView,
     )
-    .with_enabled(|| FeatureFlag::AgentManagementView.is_enabled())
+    .with_enabled(|| {
+        !cfg!(feature = "oss_slim") && FeatureFlag::AgentManagementView.is_enabled()
+    })
     .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))
     .with_mac_key_binding("cmd-shift-M")
     .with_linux_or_windows_key_binding("ctrl-shift-M")
@@ -1361,6 +1381,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             WorkspaceAction::ShowSettingsPage(SettingsSection::Account),
         )
         .with_context_predicate(id!("Workspace"))
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_group(bindings::BindingGroup::Settings.as_str())
         .with_custom_action(CustomAction::ShowAccount),
         EditableBinding::new(
@@ -1378,6 +1399,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             WorkspaceAction::ShowSettingsPage(SettingsSection::Features),
         )
         .with_group(bindings::BindingGroup::Settings.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
             "workspace:show_settings_shared_blocks_page",
@@ -1386,6 +1408,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             WorkspaceAction::ShowSettingsPage(SettingsSection::SharedBlocks),
         )
         .with_group(bindings::BindingGroup::Settings.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace"))
         .with_custom_action(CustomAction::ViewSharedBlocks),
         EditableBinding::new(
@@ -1416,6 +1439,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
         )
         .with_group(bindings::BindingGroup::Settings.as_str())
         .with_custom_action(CustomAction::OpenTeamSettings)
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
             "workspace:show_settings_privacy_page",
@@ -1437,7 +1461,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             BindingDescription::new("Open Settings: AI"),
             WorkspaceAction::ShowSettingsPage(SettingsSection::WarpAgent),
         )
-        .with_enabled(|| FeatureFlag::AgentMode.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::AgentMode.is_enabled())
         .with_group(bindings::BindingGroup::Settings.as_str())
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
@@ -1446,11 +1470,12 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             WorkspaceAction::ShowSettingsPage(SettingsSection::BillingAndUsage),
         )
         .with_group(bindings::BindingGroup::Settings.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
             "workspace:show_settings_code_page",
             BindingDescription::new("Open Settings: Code"),
-            WorkspaceAction::ShowSettingsPage(SettingsSection::CodeIndexing),
+            WorkspaceAction::ShowSettingsPage(SettingsSection::EditorAndCodeReview),
         )
         .with_group(bindings::BindingGroup::Settings.as_str())
         .with_context_predicate(id!("Workspace")),
@@ -1460,6 +1485,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             WorkspaceAction::ShowSettingsPage(SettingsSection::Referrals),
         )
         .with_group(bindings::BindingGroup::Settings.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
             "workspace:show_settings_environments_page",
@@ -1467,6 +1493,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             WorkspaceAction::ShowSettingsPage(SettingsSection::CloudEnvironments),
         )
         .with_group(bindings::BindingGroup::Settings.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
             "workspace:show_mcp_servers_settings_page",
@@ -1474,6 +1501,7 @@ fn add_open_setting_pages_as_editable_binding(app: &mut AppContext) {
             WorkspaceAction::ShowSettingsPage(SettingsSection::MCPServers),
         )
         .with_group(bindings::BindingGroup::Settings.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace")),
         EditableBinding::new(
             "workspace:open_settings_file",
@@ -1496,6 +1524,7 @@ fn add_overflow_menu_items_as_editable_binding(app: &mut AppContext) {
             "Invite People...",
             WorkspaceAction::ShowReferralSettingsPage,
         )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Workspace"))
         .with_custom_action(CustomAction::ReferAFriend),
         EditableBinding::new(

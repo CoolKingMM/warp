@@ -239,6 +239,10 @@ impl SlashCommandModel {
     /// Detects whether `buffer` matches a known skill command.
     /// Accepts `&AppContext` so it can be called outside a model update.
     fn detect_skill_command(&self, buffer: &str, ctx: &AppContext) -> Option<DetectedSkillCommand> {
+        if cfg!(feature = "oss_slim") {
+            return None;
+        }
+
         let (possible_command, possible_argument) =
             if let Some((command, argument)) = buffer.split_once(" ") {
                 (command, Some(argument.to_owned()))

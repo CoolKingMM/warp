@@ -36,6 +36,17 @@ pub struct OneTimeModalModel {
 
 impl OneTimeModalModel {
     pub fn new(ctx: &mut ModelContext<Self>) -> Self {
+        if cfg!(feature = "oss_slim") {
+            return Self {
+                is_build_plan_migration_modal_open: false,
+                is_oz_launch_modal_open: false,
+                is_openwarp_launch_modal_open: false,
+                is_orchestration_launch_modal_open: false,
+                is_hoa_onboarding_open: false,
+                target_window_id: None,
+            };
+        }
+
         // Subscribe to UserWorkspaces to detect when sunsetted_to_build_ts changes
         ctx.subscribe_to_model(
             &crate::workspaces::user_workspaces::UserWorkspaces::handle(ctx),
@@ -395,7 +406,7 @@ impl OneTimeModalModel {
         &mut self,
         ctx: &mut ModelContext<Self>,
     ) -> bool {
-        if cfg!(feature = "oss_minimal_assets") {
+        if cfg!(feature = "oss_slim") {
             return false;
         }
 

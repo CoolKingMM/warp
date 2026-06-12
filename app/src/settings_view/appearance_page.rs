@@ -277,7 +277,7 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
         flags::LEFT_PANEL_VISIBILITY_ACROSS_TABS_FLAG,
     ));
 
-    if !cfg!(feature = "oss_minimal_assets") {
+    if !cfg!(feature = "oss_slim") {
         toggle_binding_pairs.push(ToggleSettingActionPair::new(
             "agent font matching terminal font",
             builder(SettingsAction::AppearancePageToggle(
@@ -313,7 +313,7 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
         ),
     );
 
-    if !cfg!(feature = "oss_minimal_assets")
+    if !cfg!(feature = "oss_slim")
         && !FeatureFlag::OpenWarpNewSettingsModes.is_enabled()
     {
         toggle_binding_pairs.push(
@@ -1413,7 +1413,7 @@ impl AppearanceSettingsPageView {
         let font_settings = FontSettings::as_ref(ctx);
         let mut text_settings_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
             vec![Box::new(TerminalFontWidget::default())];
-        if !cfg!(feature = "oss_minimal_assets") {
+        if !cfg!(feature = "oss_slim") {
             text_settings_widgets.push(Box::new(AIFontWidget::default()));
             text_settings_widgets.push(Box::new(NotebookFontSizeWidget::default()));
         }
@@ -1451,7 +1451,7 @@ impl AppearanceSettingsPageView {
         let tab_settings = TabSettings::as_ref(ctx);
         let mut tab_settings_widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
             vec![Box::new(TabIndicatorWidget::default())];
-        if !cfg!(feature = "oss_minimal_assets")
+        if !cfg!(feature = "oss_slim")
             && !FeatureFlag::OpenWarpNewSettingsModes.is_enabled()
         {
             tab_settings_widgets.push(Box::new(CodeReviewButtonWidget::default()));
@@ -1476,12 +1476,12 @@ impl AppearanceSettingsPageView {
             tab_settings_widgets.push(Box::new(
                 HideTitleBarSearchBarInVerticalTabsWidget::default(),
             ));
-            if !cfg!(feature = "oss_minimal_assets") {
+            if !cfg!(feature = "oss_slim") {
                 tab_settings_widgets.push(Box::new(
                     UseLatestUserPromptAsConversationTitleInTabNamesWidget::default(),
                 ));
             }
-            if FeatureFlag::ConfigurableToolbar.is_enabled() {
+            if !cfg!(feature = "oss_slim") && FeatureFlag::ConfigurableToolbar.is_enabled() {
                 tab_settings_widgets.push(Box::new(EditToolbarWidget));
             }
         }

@@ -122,7 +122,7 @@ if ("$CHANNEL" -eq 'local') {
     # (which would otherwise pull in the Sentry SDK as a dependency). We also
     # avoid Cargo's very large default feature set and keep the fork focused on
     # local terminal + lightweight file editing use.
-    $FEATURES = 'release_bundle,oss_minimal_assets,skip_login,skip_firebase_anonymous_user,settings_file,tabbed_editor_view,file_tree,code_find_replace,rect_selection,ligatures,kitty_keyboard_protocol,trim_trailing_blank_lines'
+    $FEATURES = 'release_bundle,oss_slim,skip_login,skip_firebase_anonymous_user,settings_file,tabbed_editor_view,file_tree,code_find_replace,rect_selection,ligatures,kitty_keyboard_protocol,trim_trailing_blank_lines'
 }
 
 if ("$CHANNEL" -ne 'oss') {

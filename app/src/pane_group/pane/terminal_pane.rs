@@ -96,6 +96,18 @@ fn resolve_runtime_skills(
     skill_references: &[ai::skills::SkillReference],
     ctx: &AppContext,
 ) -> Result<Vec<String>, Vec<String>> {
+    #[cfg(feature = "oss_slim")]
+    {
+        let _ = ctx;
+        return if skill_references.is_empty() {
+            Ok(Vec::new())
+        } else {
+            Err(skill_references.iter().map(ToString::to_string).collect())
+        };
+    }
+
+    #[cfg(not(feature = "oss_slim"))]
+    {
     let skill_manager = SkillManager::as_ref(ctx);
     let mut runtime_skills = Vec::with_capacity(skill_references.len());
     let mut unresolved_references = Vec::new();
@@ -114,6 +126,7 @@ fn resolve_runtime_skills(
         Ok(runtime_skills)
     } else {
         Err(unresolved_references)
+    }
     }
 }
 

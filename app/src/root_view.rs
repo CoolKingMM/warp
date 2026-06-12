@@ -1636,13 +1636,16 @@ impl RootView {
         let server_api = server_api_provider.get();
         let auth_state = AuthStateProvider::as_ref(ctx).get().clone();
 
-        ctx.subscribe_to_model(&AuthManager::handle(ctx), |me, _, event, ctx| {
-            me.handle_auth_manager_event(event, ctx);
-        });
+        #[cfg(not(feature = "oss_slim"))]
+        {
+            ctx.subscribe_to_model(&AuthManager::handle(ctx), |me, _, event, ctx| {
+                me.handle_auth_manager_event(event, ctx);
+            });
 
-        ctx.subscribe_to_model(&CloudPreferencesSyncer::handle(ctx), |me, _, event, ctx| {
-            me.handle_cloud_preferences_syncer_event(event, ctx);
-        });
+            ctx.subscribe_to_model(&CloudPreferencesSyncer::handle(ctx), |me, _, event, ctx| {
+                me.handle_cloud_preferences_syncer_event(event, ctx);
+            });
+        }
 
         let auth_view =
             ctx.add_typed_action_view(|ctx| AuthView::new(AuthViewVariant::Initial, ctx));
@@ -1662,7 +1665,9 @@ impl RootView {
             workspace_setting,
         };
 
-        let auth_onboarding_state = if auth_state.is_logged_in() {
+        let auth_onboarding_state = if cfg!(feature = "oss_slim") {
+            AuthOnboardingState::Terminal(workspace_args.create_workspace(ctx))
+        } else if auth_state.is_logged_in() {
             AuthOnboardingState::Terminal(workspace_args.create_workspace(ctx))
         } else {
             cfg_if! {
@@ -3248,7 +3253,7 @@ impl RootView {
                     view.open_vertical_tabs_panel_if_enabled(ctx);
                 });
             }
-        } else if *AISettings::as_ref(ctx).is_any_ai_enabled {
+        } else if AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
             workspace.update(ctx, |view, ctx| {
                 view.start_agent_onboarding_tutorial(tutorial, ctx);
             });

@@ -236,7 +236,13 @@ impl LeftPanelView {
             }
         });
 
-        let active_view = views.first().copied().unwrap_or(ToolPanelView::WarpDrive);
+        let active_view = views.first().copied().unwrap_or_else(|| {
+            if cfg!(feature = "oss_slim") {
+                ToolPanelView::ProjectExplorer
+            } else {
+                ToolPanelView::WarpDrive
+            }
+        });
         let toolbelt_buttons = views
             .iter()
             .map(|view| Self::create_toolbelt_button_config(view, ctx))
@@ -572,6 +578,16 @@ impl LeftPanelView {
         view: ToolPanelView,
         ctx: &mut ViewContext<Self>,
     ) {
+        let view = if cfg!(feature = "oss_slim")
+            && matches!(
+                view,
+                ToolPanelView::WarpDrive | ToolPanelView::ConversationListView
+            ) {
+            ToolPanelView::ProjectExplorer
+        } else {
+            view
+        };
+
         active_view_state::set(self, view, ctx);
     }
 
@@ -987,6 +1003,10 @@ impl LeftPanelView {
                 }
             }
             LeftPanelAction::WarpDrive => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 active_view_state::set(self, ToolPanelView::WarpDrive, ctx);
                 if force_open {
                     send_telemetry_from_ctx!(
@@ -1007,6 +1027,10 @@ impl LeftPanelView {
                 }
             }
             LeftPanelAction::ConversationListView => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 active_view_state::set(self, ToolPanelView::ConversationListView, ctx);
                 send_telemetry_from_ctx!(TelemetryEvent::ConversationListViewOpened, ctx);
             }

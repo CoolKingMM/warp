@@ -501,6 +501,7 @@ impl SyncDataSource for SlashCommandDataSource {
 
         // Also search skills — when CLI agent input is open, filter to natively supported providers.
         // Skills are invoked by the agent, so they're hidden entirely when AI is globally off.
+        #[cfg(not(feature = "oss_slim"))]
         if FeatureFlag::ListSkills.is_enabled() && AISettings::as_ref(app).is_any_ai_enabled(app) {
             let cli_agent_providers = self.active_cli_agent_providers(app);
             let active_session = self.active_session.as_ref(app);

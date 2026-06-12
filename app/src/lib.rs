@@ -287,6 +287,7 @@ pub use crate::server::telemetry::{
 };
 use crate::server::telemetry::{AppStartupInfo, CloseTarget, PaletteSource, TelemetryCollector};
 use crate::session_management::{RunningSessionSummary, SessionNavigationData};
+#[cfg(not(feature = "oss_slim"))]
 use crate::settings::cloud_preferences_syncer::initialize_cloud_preferences_syncer;
 use crate::settings::manager::SettingsManager;
 use crate::settings::{AISettings, AccessibilitySettings, ScrollSettings, SelectionSettings};
@@ -317,6 +318,14 @@ use crate::workspaces::user_workspaces::{UserWorkspaces, UserWorkspacesEvent};
 /// Our embedded application assets.
 pub static ASSETS: warp_assets::Assets = warp_assets::Assets;
 
+#[cfg(feature = "oss_slim")]
+fn determine_agent_source(
+    _launch_mode: &LaunchMode,
+) -> Option<crate::ai::ambient_agents::AgentSource> {
+    None
+}
+
+#[cfg(not(feature = "oss_slim"))]
 fn determine_agent_source(
     launch_mode: &LaunchMode,
 ) -> Option<crate::ai::ambient_agents::AgentSource> {
@@ -473,6 +482,10 @@ impl LaunchMode {
 
     /// Returns `true` if this process can build and sync codebase indices.
     fn supports_indexing(&self) -> bool {
+        if cfg!(feature = "oss_slim") {
+            return false;
+        }
+
         match self {
             LaunchMode::CommandLine { command, .. } => {
                 matches!(command, CliCommand::Agent(AgentCommand::Run { .. }))
@@ -1220,6 +1233,7 @@ pub(crate) fn initialize_app(
     // in `initialize_cloud_preferences_syncer`; InvalidSettings means TOML
     // parsed but individual values were wrong, which doesn't mean local
     // state is unusable.
+    #[cfg(not(feature = "oss_slim"))]
     let startup_toml_parse_error_for_syncer = user_defaults_on_startup
         .settings_file_error
         .as_ref()
@@ -1410,17 +1424,24 @@ pub(crate) fn initialize_app(
     App::record_last_active_timestamp();
 
     ctx.add_singleton_model(|_| SettingsPaneManager::new());
-    ctx.add_singleton_model(|_| AIFactManager::new());
-    ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        ctx.add_singleton_model(|_| AIFactManager::new());
+        ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
+    }
     ctx.add_singleton_model(|_| NetworkLogPaneManager::default());
+    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(|_| pricing::PricingInfoModel::new());
-    ctx.add_singleton_model(|ctx| {
-        // Not using the *Provider types isn't ideal, but it's worth it for the ability to move managed secrets to a separate crate.
-        ManagedSecretManager::new(
-            server_api_provider.as_ref(ctx).get_managed_secrets_client(),
-            auth_state.clone(),
-        )
-    });
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        ctx.add_singleton_model(|ctx| {
+            // Not using the *Provider types isn't ideal, but it's worth it for the ability to move managed secrets to a separate crate.
+            ManagedSecretManager::new(
+                server_api_provider.as_ref(ctx).get_managed_secrets_client(),
+                auth_state.clone(),
+            )
+        });
+    }
 
     #[cfg(target_os = "macos")]
     if !launch_mode.is_headless() {
@@ -1445,9 +1466,9 @@ pub(crate) fn initialize_app(
     ctx.add_singleton_model(|_ctx| SyncedInputState::new());
 
     ctx.add_singleton_model(remote_server::manager::RemoteServerManager::new);
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), not(feature = "oss_slim")))]
     ctx.add_singleton_model(remote_server::codebase_index_model::RemoteCodebaseIndexModel::new);
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), not(feature = "oss_slim")))]
     remote_server::wire_auth_token_rotation(ctx);
 
     log::info!(
@@ -1485,7 +1506,7 @@ pub(crate) fn initialize_app(
 
     let user_is_logged_in = auth_state.is_logged_in();
 
-    if user_is_logged_in {
+    if user_is_logged_in && !cfg!(feature = "oss_slim") {
         // Skip refresh_user for CLI mode — the CLI handles auth refresh in
         // ensure_auth_state so it can detect invalid credentials before running
         // a command.
@@ -1534,7 +1555,7 @@ pub(crate) fn initialize_app(
                 crash_recovery.on_frame_drawn(window_id, ctx);
             });
         })
-    } else {
+    } else if !cfg!(feature = "oss_slim") {
         // If the app was opened while logged out, record an event for measuring new users.
         // This is sent immediately in case they quit the app on the signup screen.
         send_telemetry_sync_from_app_ctx!(TelemetryEvent::LoggedOutStartup, ctx);
@@ -1553,6 +1574,7 @@ pub(crate) fn initialize_app(
         // subscribers (LSP, MCP). Registered before any repository begins
         // watching so it gates descent on the very first registration.
         DirectoryWatcher::handle(ctx).update(ctx, |watcher, _| {
+            #[cfg(not(feature = "oss_slim"))]
             watcher.register_force_included_paths(
                 ::ai::skills::SKILL_PROVIDER_DEFINITIONS
                     .iter()
@@ -1584,18 +1606,21 @@ pub(crate) fn initialize_app(
             } else {
                 RepoMetadataModel::new(ctx)
             };
-            model.register_force_included_paths(
-                ::ai::skills::SKILL_PROVIDER_DEFINITIONS
-                    .iter()
-                    .map(|provider| provider.skills_path.clone()),
-                ctx,
-            );
-            model.set_project_skill_provider_paths(
-                ::ai::skills::SKILL_PROVIDER_DEFINITIONS
-                    .iter()
-                    .map(|provider| provider.skills_path.clone()),
-                ctx,
-            );
+            #[cfg(not(feature = "oss_slim"))]
+            {
+                model.register_force_included_paths(
+                    ::ai::skills::SKILL_PROVIDER_DEFINITIONS
+                        .iter()
+                        .map(|provider| provider.skills_path.clone()),
+                    ctx,
+                );
+                model.set_project_skill_provider_paths(
+                    ::ai::skills::SKILL_PROVIDER_DEFINITIONS
+                        .iter()
+                        .map(|provider| provider.skills_path.clone()),
+                    ctx,
+                );
+            }
 
             // Subscribe to RemoteServerManager push events so that remote repo
             // metadata snapshots and incremental updates populate the remote
@@ -1622,6 +1647,7 @@ pub(crate) fn initialize_app(
         });
     }
 
+    #[cfg(not(feature = "oss_slim"))]
     {
         use code_review::git_status_update::GitStatusUpdateModel;
         ctx.add_singleton_model(|_| GitStatusUpdateModel::new());
@@ -1645,6 +1671,7 @@ pub(crate) fn initialize_app(
     timer.mark_interval_end("INITIALIZE_TELEMETRY_COLLECTION");
 
     // Register initial keybindings prior to creating menus
+    #[cfg(not(feature = "oss_slim"))]
     ai::init(ctx);
     app_services::init(ctx);
     // // TODO: Temporarily disabling keybindings for WASM builds. Will be implemented in future WASM support.
@@ -1655,6 +1682,7 @@ pub(crate) fn initialize_app(
     terminal::init(ctx);
     input::init(ctx);
     editor::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
     onboarding::init(ctx);
     menu::init(ctx);
     tips::tip_view::init(ctx);
@@ -1665,32 +1693,44 @@ pub(crate) fn initialize_app(
     themes::theme_deletion_modal::init(ctx);
     root_view::init(ctx);
     voltron::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
     auth::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
     reward_view::init(ctx);
     crate::view_components::find::init(ctx);
     prompt::editor_modal::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
     ai::blocklist::agent_view::editor::init(ctx);
     undo_close::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
     billing::shared_objects_creation_denied_modal::init(ctx);
     tab_configs::new_worktree_modal::init(ctx);
     tab_configs::params_modal::init(ctx);
-    ai::blocklist::init(ctx);
-    ai::blocklist::block::status_bar::init(ctx);
-    drive::index::init(ctx);
-    drive::sharing::dialog::init(ctx);
-    ai_assistant::panel::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        ai::blocklist::init(ctx);
+        ai::blocklist::block::status_bar::init(ctx);
+        drive::index::init(ctx);
+        drive::sharing::dialog::init(ctx);
+        ai_assistant::panel::init(ctx);
+    }
     settings_view::update_environment_form::init(ctx);
     env_vars::env_var_collection_block::init(ctx);
     terminal::ssh::install_tmux::init(ctx);
     terminal::ssh::warpify::init(ctx);
     terminal::ssh::error::init(ctx);
-    context_chips::display_menu::init(ctx);
-    context_chips::node_version_popup::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        context_chips::display_menu::init(ctx);
+        context_chips::node_version_popup::init(ctx);
+    }
     env_vars::view::env_var_collection::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
     ai::agent::todos::popup::init(ctx);
     terminal::view::init_environment::mode_selector::init(ctx);
+    #[cfg(not(feature = "oss_slim"))]
     coding_entrypoints::project_buttons::init(ctx);
-    if FeatureFlag::CodeReviewSaveChanges.is_enabled() {
+    if !cfg!(feature = "oss_slim") && FeatureFlag::CodeReviewSaveChanges.is_enabled() {
         code_review::init(ctx);
     }
 
@@ -1699,9 +1739,11 @@ pub(crate) fn initialize_app(
 
     ctx.add_singleton_model(|_| RelaunchModel::new());
     ctx.add_singleton_model(|_| ChangelogModel::new(server_api.clone()));
+    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(|_| GitHubAuthNotifier::new());
     ctx.add_singleton_model(|_| NetworkStatus::new());
     ctx.add_singleton_model(|_| SystemStats::new());
+    #[cfg(not(feature = "oss_slim"))]
     workspace::auto_handoff::init(ctx);
     ctx.add_singleton_model(|_| KeybindingChangedNotifier::new());
     ctx.add_singleton_model(|_| search::command_palette::SelectedItems::new());
@@ -1709,8 +1751,10 @@ pub(crate) fn initialize_app(
     ctx.add_singleton_model(|_| VimRegisters::new());
     ctx.add_singleton_model(UndoCloseStack::new);
     ctx.add_singleton_model(|_| ToastStack);
+    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(|_| GlobalCodeReviewModel);
     ctx.add_singleton_model(workspace::OneTimeModalModel::new);
+    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(
         workspace::bonus_grant_notification_model::BonusGrantNotificationModel::new,
     );
@@ -1722,8 +1766,9 @@ pub(crate) fn initialize_app(
     #[cfg(feature = "local_fs")]
     ctx.add_singleton_model(|_| LanguageServerShutdownManager::new());
 
-    #[cfg(feature = "voice_input")]
+    #[cfg(all(feature = "voice_input", not(feature = "oss_slim")))]
     ctx.add_singleton_model(voice_input::VoiceInput::new);
+    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(|_| {
         VoiceTranscriber::new(Arc::new(ServerVoiceTranscriber::new(server_api.clone())))
     });
@@ -1861,50 +1906,58 @@ pub(crate) fn initialize_app(
         )
     });
 
-    let toml_file_path = settings::user_preferences_toml_file_path();
-    ctx.add_singleton_model(move |ctx| {
-        initialize_cloud_preferences_syncer(
-            toml_file_path,
-            startup_toml_parse_error_for_syncer.as_deref(),
-            ctx,
-        )
-    });
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        let toml_file_path = settings::user_preferences_toml_file_path();
+        ctx.add_singleton_model(move |ctx| {
+            initialize_cloud_preferences_syncer(
+                toml_file_path,
+                startup_toml_parse_error_for_syncer.as_deref(),
+                ctx,
+            )
+        });
+    }
 
     // LogManager must be registered before any subsystem (e.g. MCP, LSP) that creates file-based loggers.
     ctx.add_singleton_model(|_| simple_logger::manager::LogManager::new());
 
+    #[cfg(not(feature = "oss_slim"))]
     let running_mcp_servers = app_state
         .as_ref()
         .map(|app_state| app_state.running_mcp_servers.as_slice())
         .unwrap_or(&[]);
 
-    // FileMCPWatcher must be registered before FileBasedMCPManager, which subscribes to it.
-    ctx.add_singleton_model(FileMCPWatcher::new);
-    ctx.add_singleton_model(FileBasedMCPManager::new);
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        // FileMCPWatcher must be registered before FileBasedMCPManager, which subscribes to it.
+        ctx.add_singleton_model(FileMCPWatcher::new);
+        ctx.add_singleton_model(FileBasedMCPManager::new);
 
-    // TemplatableMCPServerManager must be registered after UpdateManager and MCPServerManager so it can migrate legacy MCPs on start up
-    // It should also be registered after FileBasedMCPManager so it can receive file-based server updates.
-    ctx.add_singleton_model(|ctx| {
-        TemplatableMCPServerManager::new(
-            persisted_mcp_server_installations,
-            mcp_servers_to_restore,
-            running_mcp_servers,
-            ctx,
-        )
-    });
+        // TemplatableMCPServerManager must be registered after UpdateManager and MCPServerManager so it can migrate legacy MCPs on start up
+        // It should also be registered after FileBasedMCPManager so it can receive file-based server updates.
+        ctx.add_singleton_model(|ctx| {
+            TemplatableMCPServerManager::new(
+                persisted_mcp_server_installations,
+                mcp_servers_to_restore,
+                running_mcp_servers,
+                ctx,
+            )
+        });
 
-    // MCPGalleryManager subscribes to UpdateManager so that it can be notified when gallery items are updated.
-    // The registration of this singleton must be after UpdateManager is registered.
-    ctx.add_singleton_model(MCPGalleryManager::new);
+        // MCPGalleryManager subscribes to UpdateManager so that it can be notified when gallery items are updated.
+        // The registration of this singleton must be after UpdateManager is registered.
+        ctx.add_singleton_model(MCPGalleryManager::new);
 
-    // SkillManager is used to cache SKILL.md files for all active terminal views and their working directories
-    ctx.add_singleton_model(SkillManager::new);
+        // SkillManager is used to cache SKILL.md files for all active terminal views and their working directories
+        ctx.add_singleton_model(SkillManager::new);
+    }
 
     // CloudViewModel subscribes to UpdateManager so that it can be notified when objects are
     // created on the server.
     ctx.add_singleton_model(CloudViewModel::new);
 
     // AIDocumentModel subscribes to UpdateManager so that it can be notified when notebooks are created on the server.
+    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(AIDocumentModel::new);
 
     // AgentConversationsModel subscribes to UpdateManager for RTC task updates.
@@ -1960,7 +2013,7 @@ pub(crate) fn initialize_app(
     ctx.add_singleton_model(EnvVarCollectionManager::new);
     ctx.add_singleton_model(WorkflowManager::new);
 
-    if FeatureFlag::ScheduledAmbientAgents.is_enabled() {
+    if !cfg!(feature = "oss_slim") && FeatureFlag::ScheduledAmbientAgents.is_enabled() {
         ctx.add_singleton_model(ScheduledAgentManager::new);
     }
 
@@ -1972,10 +2025,11 @@ pub(crate) fn initialize_app(
     ctx.add_singleton_model(HarnessAvailabilityModel::new);
     ctx.add_singleton_model(ConnectedSelfHostedWorkersModel::new);
 
-    let tip_model_handle = ctx.add_singleton_model(|ctx| {
-        ai::agent_tips::AITipModel::<ai::AgentTip>::new_for_agent_tips(ctx)
-    });
+    #[cfg(not(feature = "oss_slim"))]
     {
+        let tip_model_handle = ctx.add_singleton_model(|ctx| {
+            ai::agent_tips::AITipModel::<ai::AgentTip>::new_for_agent_tips(ctx)
+        });
         // Rebuild the tip pool when AI settings change so tips whose applicability
         // depends on AI settings appear/disappear without waiting for the next cooldown cycle.
         let tip_model_handle_for_ai = tip_model_handle.clone();
@@ -2068,7 +2122,10 @@ pub(crate) fn initialize_app(
 
     // Index global rules (e.g. ~/.agents/AGENTS.md) on a background task so
     // they are available to subsequent agent queries.
-    ProjectContextModel::handle(ctx).update(ctx, |me, ctx| me.index_global_rules(ctx));
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        ProjectContextModel::handle(ctx).update(ctx, |me, ctx| me.index_global_rules(ctx));
+    }
 
     ctx.add_singleton_model(|ctx| {
         PersistedWorkspace::new(

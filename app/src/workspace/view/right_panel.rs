@@ -388,7 +388,7 @@ impl RightPanelView {
             "Toggle Maximize Code Review Panel",
             RightPanelAction::ToggleMaximize,
         )
-        .with_enabled(|| cfg!(feature = "local_fs"))
+        .with_enabled(|| cfg!(feature = "local_fs") && !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("RightPanelView"))
         .with_custom_action(CustomAction::ToggleMaximizePane)]);
     }
@@ -409,7 +409,7 @@ impl RightPanelView {
             }
         };
 
-        let code_review_state = if cfg!(feature = "local_fs") {
+        let code_review_state = if cfg!(feature = "local_fs") && !cfg!(feature = "oss_slim") {
             Some(CodeReviewState::new(ctx))
         } else {
             None

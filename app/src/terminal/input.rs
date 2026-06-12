@@ -5437,6 +5437,10 @@ impl Input {
         conversation_id_override: Option<AIConversationId>,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
+        if cfg!(feature = "oss_slim") {
+            return false;
+        }
+
         let is_queued_prompt = queued_query_id.is_some();
         // Resolve the skill from SkillManager
         let skill = match SkillManager::handle(ctx)
@@ -15692,11 +15696,13 @@ impl TypedActionView for Input {
                 );
             }
             InputAction::FigmaAddButtonClicked => {
+                #[cfg(not(feature = "oss_slim"))]
                 TemplatableMCPServerManager::handle(ctx).update(ctx, |manager, ctx| {
                     manager.install_figma_from_gallery(ctx);
                 });
             }
             InputAction::FigmaEnableButtonClicked => {
+                #[cfg(not(feature = "oss_slim"))]
                 TemplatableMCPServerManager::handle(ctx).update(ctx, |manager, ctx| {
                     manager.enable_figma_mcp(ctx);
                 });

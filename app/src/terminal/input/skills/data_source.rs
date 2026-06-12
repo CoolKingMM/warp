@@ -119,6 +119,14 @@ impl SyncDataSource for SkillSelectorDataSource {
         query: &Query,
         app: &AppContext,
     ) -> Result<Vec<QueryResult<Self::Action>>, DataSourceRunErrorWrapper> {
+        #[cfg(feature = "oss_slim")]
+        {
+            let _ = (query, app);
+            return Ok(Vec::new());
+        }
+
+        #[cfg(not(feature = "oss_slim"))]
+        {
         let cwd = self.get_current_working_directory(app);
         let cli_agent_providers = self.active_cli_agent_providers(app);
         let skills = SkillManager::as_ref(app).get_skills_for_working_directory(cwd.as_ref(), app);
@@ -188,6 +196,7 @@ impl SyncDataSource for SkillSelectorDataSource {
                 ))
             })
             .collect())
+        }
     }
 }
 

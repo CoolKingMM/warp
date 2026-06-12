@@ -91,6 +91,14 @@ pub fn list_skills_if_changed(
     conversation_id: Option<AIConversationId>,
     app: &AppContext,
 ) -> Option<Vec<SkillDescriptor>> {
+    #[cfg(feature = "oss_slim")]
+    {
+        let _ = (working_directory, conversation_id, app);
+        return None;
+    }
+
+    #[cfg(not(feature = "oss_slim"))]
+    {
     let current_skills =
         SkillManager::as_ref(app).get_skills_for_working_directory(working_directory, app);
 
@@ -118,6 +126,7 @@ pub fn list_skills_if_changed(
         Some(current_skills)
     } else {
         None
+    }
     }
 }
 

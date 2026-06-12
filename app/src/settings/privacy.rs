@@ -792,16 +792,18 @@ impl PrivacySettings {
                         .is_cloud_conversation_storage_enabled
                         .set_value(self.is_cloud_conversation_storage_enabled, ctx));
                 });
-                CloudPreferencesSyncer::handle(ctx).update(ctx, |syncer, ctx| {
-                    syncer.maybe_sync_local_prefs_to_cloud(
-                        vec![
-                            IsTelemetryEnabled::storage_key().to_string(),
-                            IsCrashReportingEnabled::storage_key().to_string(),
-                            IsCloudConversationStorageEnabled::storage_key().to_string(),
-                        ],
-                        ctx,
-                    );
-                });
+                if !cfg!(feature = "oss_slim") {
+                    CloudPreferencesSyncer::handle(ctx).update(ctx, |syncer, ctx| {
+                        syncer.maybe_sync_local_prefs_to_cloud(
+                            vec![
+                                IsTelemetryEnabled::storage_key().to_string(),
+                                IsCrashReportingEnabled::storage_key().to_string(),
+                                IsCloudConversationStorageEnabled::storage_key().to_string(),
+                            ],
+                            ctx,
+                        );
+                    });
+                }
             }
         }
     }

@@ -28,6 +28,14 @@ impl SyncDataSource for SkillsDataSource {
         query: &Query,
         app: &AppContext,
     ) -> Result<Vec<QueryResult<Self::Action>>, DataSourceRunErrorWrapper> {
+        #[cfg(feature = "oss_slim")]
+        {
+            let _ = (query, app);
+            return Ok(Vec::new());
+        }
+
+        #[cfg(not(feature = "oss_slim"))]
+        {
         let query_text = &query.text;
 
         // Resolve the current working directory from the active window's session.
@@ -88,6 +96,7 @@ impl SyncDataSource for SkillsDataSource {
         results.truncate(MAX_RESULTS);
 
         Ok(results)
+        }
     }
 }
 

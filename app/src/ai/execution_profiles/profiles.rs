@@ -199,6 +199,7 @@ impl AIExecutionProfilesModel {
             });
         }
 
+        #[cfg(not(feature = "oss_slim"))]
         ctx.subscribe_to_model(
             &TemplatableMCPServerManager::handle(ctx),
             |me, event, ctx| {

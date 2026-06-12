@@ -5888,6 +5888,10 @@ impl Workspace {
         position: Vector2F,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         if !FeatureFlag::ConfigurableToolbar.is_enabled() {
             return;
         }
@@ -5902,6 +5906,10 @@ impl Workspace {
     }
 
     fn open_header_toolbar_editor(&mut self, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         if !FeatureFlag::ConfigurableToolbar.is_enabled() {
             return;
         }
@@ -18466,7 +18474,7 @@ impl Workspace {
 
     /// Opens the Codex modal.
     pub fn open_codex_modal(&mut self, ctx: &mut ViewContext<Self>) {
-        if cfg!(feature = "oss_minimal_assets") {
+        if cfg!(feature = "oss_slim") {
             return;
         }
 
@@ -18592,7 +18600,7 @@ impl Workspace {
     }
 
     pub fn check_and_open_free_tier_limit_modal(&mut self, ctx: &mut ViewContext<Self>) -> bool {
-        if cfg!(feature = "oss_minimal_assets") {
+        if cfg!(feature = "oss_slim") {
             return false;
         }
 
@@ -20252,7 +20260,8 @@ impl Workspace {
         }
 
         // Legacy AI assistant button (non-agent-mode only)
-        if is_online
+        if !cfg!(feature = "oss_slim")
+            && is_online
             && !FeatureFlag::AgentMode.is_enabled()
             && !is_web_anonymous_user
             && !self.current_workspace_state.is_ai_assistant_panel_open
@@ -20270,7 +20279,7 @@ impl Workspace {
             );
         }
 
-        if FeatureFlag::AvatarInTabBar.is_enabled() {
+        if !cfg!(feature = "oss_slim") && FeatureFlag::AvatarInTabBar.is_enabled() {
             target.add_child(
                 Container::new(self.render_avatar_button(appearance, ctx))
                     .with_margin_left(TAB_BAR_PADDING_LEFT)
@@ -20278,7 +20287,10 @@ impl Workspace {
             );
         } else {
             let resource_center_closed = !self.current_workspace_state.is_resource_center_open;
-            if resource_center_closed && ContextFlag::WarpEssentials.is_enabled() {
+            if !cfg!(feature = "oss_slim")
+                && resource_center_closed
+                && ContextFlag::WarpEssentials.is_enabled()
+            {
                 target.add_child(
                     Container::new(self.render_resource_center_button(appearance, ctx))
                         .with_margin_left(TAB_BAR_PADDING_LEFT)
@@ -20293,7 +20305,8 @@ impl Workspace {
             );
         }
 
-        if self.auth_state.is_anonymous_or_logged_out()
+        if !cfg!(feature = "oss_slim")
+            && self.auth_state.is_anonymous_or_logged_out()
             && !FeatureFlag::OpenWarpNewSettingsModes.is_enabled()
         {
             if is_web_anonymous_user {
@@ -21102,7 +21115,9 @@ impl Workspace {
                     self.render_config_panel_maximized(pane_group, &config, app),
                     app,
                 );
-            } else if !config.contains_item(&HeaderToolbarItemKind::CodeReview) {
+            } else if !cfg!(feature = "oss_slim")
+                && !config.contains_item(&HeaderToolbarItemKind::CodeReview)
+            {
                 Self::add_panel_with_separator(
                     &mut main_content,
                     &mut prev_panel_added,
@@ -21744,7 +21759,9 @@ impl Workspace {
                     self.render_config_panel_maximized(pane_group, &config, app),
                     app,
                 );
-            } else if !config.contains_item(&HeaderToolbarItemKind::CodeReview) {
+            } else if !cfg!(feature = "oss_slim")
+                && !config.contains_item(&HeaderToolbarItemKind::CodeReview)
+            {
                 Self::add_panel_with_separator(
                     &mut panels_view,
                     &mut prev_panel_added,
@@ -22703,7 +22720,7 @@ impl Workspace {
                 entry_focus: GlobalSearchEntryFocus::Results,
             });
         }
-        if WarpDriveSettings::is_warp_drive_enabled(ctx) {
+        if !cfg!(feature = "oss_slim") && WarpDriveSettings::is_warp_drive_enabled(ctx) {
             views.push(ToolPanelView::WarpDrive);
         }
         views
@@ -23134,6 +23151,14 @@ impl TypedActionView for Workspace {
                 self.open_network_log_pane(ctx);
             }
             FixSettingsWithOz { error_description } => {
+                #[cfg(feature = "oss_slim")]
+                {
+                    let _ = error_description;
+                    self.show_settings(ctx);
+                }
+
+                #[cfg(not(feature = "oss_slim"))]
+                {
                 use crate::ai::skills::SkillManager;
                 let modify_settings_skill = SkillManager::as_ref(ctx)
                     .active_bundled_skill("modify-settings", ctx)
@@ -23178,6 +23203,7 @@ impl TypedActionView for Workspace {
                         });
                     }
                 });
+                }
             }
             OpenWorktreeInRepo { repo_path } => {
                 self.open_worktree_in_repo(repo_path.clone(), ctx);
@@ -23492,11 +23518,19 @@ impl TypedActionView for Workspace {
                 }
             }
             ToggleRightPanel => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 let pane_group_handle = self.active_tab_pane_group().clone();
                 self.toggle_right_panel(&pane_group_handle, ctx);
             }
             #[cfg(feature = "local_fs")]
             OpenCodeReviewPanel(locator) => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 let pane_group_handle = self
                     .tabs
                     .iter()
@@ -23547,6 +23581,10 @@ impl TypedActionView for Workspace {
                 self.toggle_vertical_tabs_panel(ctx);
             }
             ToggleNotificationMailbox { select_first } => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 if FeatureFlag::HOANotifications.is_enabled()
                     && *AISettings::as_ref(ctx).show_agent_notifications
                 {
@@ -23703,6 +23741,10 @@ impl TypedActionView for Workspace {
                 ctx.notify();
             }
             ToggleAgentManagementView => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
                 {
@@ -23724,6 +23766,10 @@ impl TypedActionView for Workspace {
                 }
             }
             ViewAgentRunsForEnvironment { environment_id } => {
+                if cfg!(feature = "oss_slim") {
+                    return;
+                }
+
                 if AISettings::as_ref(ctx).is_any_ai_enabled(ctx)
                     && FeatureFlag::AgentManagementView.is_enabled()
                 {

@@ -165,7 +165,8 @@ pub fn init(app: &mut AppContext) {
             },
             TerminalAction::ResumeConversation,
             id!("Terminal") & !id!("IMEOpen") & id!(CAN_RESUME_CONVERSATION_KEY),
-        ),
+        )
+        .with_enabled(|| !cfg!(feature = "oss_slim")),
         // Fork from the last known good exchange keybinding
         FixedBinding::new_per_platform(
             PerPlatformKeystroke {
@@ -174,13 +175,15 @@ pub fn init(app: &mut AppContext) {
             },
             TerminalAction::ForkConversationFromLastKnownGoodState,
             id!("Terminal") & !id!("IMEOpen") & id!(CAN_FORK_FROM_LAST_KNOWN_GOOD_STATE_KEY),
-        ),
+        )
+        .with_enabled(|| !cfg!(feature = "oss_slim")),
         // Toggle AI document pane
         FixedBinding::new(
             "cmdorctrl-alt-p",
             TerminalAction::ToggleAIDocumentPane,
             id!("Terminal") & !id!("IMEOpen"),
-        ),
+        )
+        .with_enabled(|| !cfg!(feature = "oss_slim")),
         // On the web, we get pastes from system paste events.
         #[cfg(target_family = "wasm")]
         FixedBinding::standard(
@@ -196,7 +199,8 @@ pub fn init(app: &mut AppContext) {
             "cmd-meta-y",
             TerminalAction::ForkConversationFromLastKnownGoodState,
             id!("Terminal") & !id!("IMEOpen") & id!(CAN_FORK_FROM_LAST_KNOWN_GOOD_STATE_KEY),
-        )]);
+        )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))]);
     }
 
     // Register binding to toggle plans in agent conversations.
@@ -205,7 +209,8 @@ pub fn init(app: &mut AppContext) {
             "cmdorctrl-alt-p",
             TerminalAction::ToggleAIDocumentPane,
             id!("Terminal") & !id!("IMEOpen"),
-        )]);
+        )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))]);
         if cfg!(target_os = "macos") {
             // On MacOS, if the user has the 'Option as meta' setting enabled, the cmd-alt-p binding
             // above will not match.
@@ -216,7 +221,8 @@ pub fn init(app: &mut AppContext) {
                 "cmd-meta-p",
                 TerminalAction::ToggleAIDocumentPane,
                 id!("Terminal") & !id!("IMEOpen"),
-            )]);
+            )
+            .with_enabled(|| !cfg!(feature = "oss_slim"))]);
         }
     }
 
@@ -782,7 +788,7 @@ pub fn init(app: &mut AppContext) {
                 ),
             TerminalAction::ContextMenu(ContextMenuAction::AskAI(AskAISource::SelectedBlocks)),
         )
-        .with_enabled(|| FeatureFlag::AgentMode.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::AgentMode.is_enabled())
         .with_custom_action(CustomAction::AttachSelectionAsAgentModeContext)
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         // When possible, prioritize the text selection action over attaching a block as
@@ -805,7 +811,7 @@ pub fn init(app: &mut AppContext) {
                 AskAISource::SelectedTerminalText,
             )),
         )
-        .with_enabled(|| FeatureFlag::AgentMode.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::AgentMode.is_enabled())
         .with_custom_action(CustomAction::AttachSelectionAsAgentModeContext)
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_context_predicate(
@@ -822,7 +828,7 @@ pub fn init(app: &mut AppContext) {
             "Ask Warp AI about Selection",
             TerminalAction::ContextMenu(ContextMenuAction::AskAI(AskAISource::SelectedBlockOrText)),
         )
-        .with_enabled(|| !FeatureFlag::AgentMode.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && !FeatureFlag::AgentMode.is_enabled())
         .with_custom_action(CustomAction::AttachSelectionAsAgentModeContext)
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_context_predicate(
@@ -840,7 +846,7 @@ pub fn init(app: &mut AppContext) {
             "Ask Warp AI about last block",
             TerminalAction::ContextMenu(ContextMenuAction::AskAI(AskAISource::LastBlock)),
         )
-        .with_enabled(|| !FeatureFlag::AgentMode.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && !FeatureFlag::AgentMode.is_enabled())
         .with_key_binding("ctrl-shift->")
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_context_predicate(
@@ -851,7 +857,7 @@ pub fn init(app: &mut AppContext) {
             "Ask Warp AI",
             TerminalAction::ContextMenu(ContextMenuAction::AskAI(AskAISource::SelectedInputText)),
         )
-        .with_enabled(|| !FeatureFlag::AgentMode.is_enabled())
+        .with_enabled(|| !cfg!(feature = "oss_slim") && !FeatureFlag::AgentMode.is_enabled())
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_key_binding("ctrl-shift-space")
         .with_context_predicate(id!("Input") & id!(flags::IS_ANY_AI_ENABLED)),
@@ -872,6 +878,7 @@ pub fn init(app: &mut AppContext) {
             "Setup Guide",
             TerminalAction::OnboardingFlow(OnboardingVersion::Legacy),
         )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(
             id!("Terminal") & id!(SharedSessionStatus::NotShared.as_keymap_context()),
         ),
@@ -882,7 +889,9 @@ pub fn init(app: &mut AppContext) {
             TerminalAction::OnboardingFlow(OnboardingVersion::Legacy),
         )
         .with_enabled(|| {
-            FeatureFlag::AgentOnboarding.is_enabled() && ChannelState::enable_debug_features()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentOnboarding.is_enabled()
+                && ChannelState::enable_debug_features()
         })
         .with_context_predicate(
             id!("Terminal") & id!(SharedSessionStatus::NotShared.as_keymap_context()),
@@ -895,7 +904,9 @@ pub fn init(app: &mut AppContext) {
             )),
         )
         .with_enabled(|| {
-            FeatureFlag::AgentOnboarding.is_enabled() && ChannelState::enable_debug_features()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentOnboarding.is_enabled()
+                && ChannelState::enable_debug_features()
         })
         .with_context_predicate(
             id!("Terminal") & id!(SharedSessionStatus::NotShared.as_keymap_context()),
@@ -908,7 +919,9 @@ pub fn init(app: &mut AppContext) {
             )),
         )
         .with_enabled(|| {
-            FeatureFlag::AgentOnboarding.is_enabled() && ChannelState::enable_debug_features()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentOnboarding.is_enabled()
+                && ChannelState::enable_debug_features()
         })
         .with_context_predicate(
             id!("Terminal") & id!(SharedSessionStatus::NotShared.as_keymap_context()),
@@ -925,7 +938,9 @@ pub fn init(app: &mut AppContext) {
             )),
         )
         .with_enabled(|| {
-            FeatureFlag::AgentOnboarding.is_enabled() && ChannelState::enable_debug_features()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentOnboarding.is_enabled()
+                && ChannelState::enable_debug_features()
         })
         .with_context_predicate(
             id!("Terminal") & id!(SharedSessionStatus::NotShared.as_keymap_context()),
@@ -941,7 +956,9 @@ pub fn init(app: &mut AppContext) {
             )),
         )
         .with_enabled(|| {
-            FeatureFlag::AgentOnboarding.is_enabled() && ChannelState::enable_debug_features()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentOnboarding.is_enabled()
+                && ChannelState::enable_debug_features()
         })
         .with_context_predicate(
             id!("Terminal") & id!(SharedSessionStatus::NotShared.as_keymap_context()),
@@ -957,7 +974,9 @@ pub fn init(app: &mut AppContext) {
             )),
         )
         .with_enabled(|| {
-            FeatureFlag::AgentOnboarding.is_enabled() && ChannelState::enable_debug_features()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentOnboarding.is_enabled()
+                && ChannelState::enable_debug_features()
         })
         .with_context_predicate(
             id!("Terminal") & id!(SharedSessionStatus::NotShared.as_keymap_context()),
@@ -984,7 +1003,8 @@ pub fn init(app: &mut AppContext) {
         )
         .with_custom_action(CustomAction::ShareCurrentSession)
         .with_enabled(|| {
-            FeatureFlag::CreatingSharedSessions.is_enabled()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::CreatingSharedSessions.is_enabled()
                 && ContextFlag::CreateSharedSession.is_enabled()
         }),
         EditableBinding::new(
@@ -994,6 +1014,7 @@ pub fn init(app: &mut AppContext) {
                 source: SharedSessionActionSource::CommandPalette,
             },
         )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(
             id!("Terminal") & id!(SharedSessionStatus::ActiveSharer.as_keymap_context()),
         ),
@@ -1023,7 +1044,9 @@ pub fn init(app: &mut AppContext) {
         .with_key_binding("cmdorctrl-shift-I")
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_context_predicate(id!(flags::IS_ANY_AI_ENABLED) & id!("Terminal"))
-        .with_enabled(|| FeatureFlag::FastForwardAutoexecuteButton.is_enabled()),
+        .with_enabled(|| {
+            !cfg!(feature = "oss_slim") && FeatureFlag::FastForwardAutoexecuteButton.is_enabled()
+        }),
         EditableBinding::new(
             TOGGLE_QUEUE_NEXT_PROMPT_KEYBINDING,
             "Toggle Queue Next Prompt",
@@ -1032,7 +1055,7 @@ pub fn init(app: &mut AppContext) {
         .with_key_binding("cmdorctrl-shift-J")
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_context_predicate(id!(flags::IS_ANY_AI_ENABLED) & id!("Terminal"))
-        .with_enabled(|| FeatureFlag::QueueSlashCommand.is_enabled()),
+        .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::QueueSlashCommand.is_enabled()),
         EditableBinding::new(
             "terminal:generate_codebase_index",
             "[Debug] Generate codebase index",
@@ -1041,7 +1064,8 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::WarpAi.as_str())
         .with_context_predicate(id!("Terminal") & !id!("IMEOpen"))
         .with_enabled(|| {
-            FeatureFlag::FullSourceCodeEmbedding.is_enabled()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::FullSourceCodeEmbedding.is_enabled()
                 && ChannelState::enable_debug_features()
         }),
     ]);
@@ -1074,7 +1098,9 @@ pub fn init(app: &mut AppContext) {
         BindingDescription::new("Write current codebase index snapshot"),
         TerminalAction::WriteCodebaseIndex,
     )
-    .with_enabled(|| FeatureFlag::CodebaseIndexPersistence.is_enabled())
+    .with_enabled(|| {
+        !cfg!(feature = "oss_slim") && FeatureFlag::CodebaseIndexPersistence.is_enabled()
+    })
     .with_context_predicate(id!("Workspace"))]);
 
     app.register_editable_bindings([EditableBinding::new(
@@ -1082,7 +1108,7 @@ pub fn init(app: &mut AppContext) {
         "Load agent mode conversation (from debug link in clipboard)",
         TerminalAction::LoadAgentModeConversation,
     )
-    .with_enabled(ChannelState::enable_debug_features)
+    .with_enabled(|| !cfg!(feature = "oss_slim") && ChannelState::enable_debug_features())
     .with_context_predicate(id!("Terminal"))]);
 
     app.register_editable_bindings([EditableBinding::new(
@@ -1098,6 +1124,7 @@ pub fn init(app: &mut AppContext) {
         BindingDescription::new("Initiate project for warp"),
         TerminalAction::InitProject,
     )
+    .with_enabled(|| !cfg!(feature = "oss_slim"))
     .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))]);
 
     app.register_editable_bindings([EditableBinding::new(
@@ -1105,7 +1132,7 @@ pub fn init(app: &mut AppContext) {
         BindingDescription::new("Add current folder as project"),
         TerminalAction::AddProjectAtCurrentDirectory,
     )
-    .with_enabled(|| FeatureFlag::Projects.is_enabled())
+    .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::Projects.is_enabled())
     .with_context_predicate(id!("Workspace") & id!(flags::IS_ANY_AI_ENABLED))]);
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1115,6 +1142,7 @@ pub fn init(app: &mut AppContext) {
         TerminalAction::ToggleConversationDetailsPanel,
     )
     .with_group(bindings::BindingGroup::WarpAi.as_str())
+    .with_enabled(|| !cfg!(feature = "oss_slim"))
     .with_context_predicate(id!("Terminal") & id!(CAN_SHOW_CONVERSATION_DETAILS_KEY))]);
 
     app.register_editable_bindings([
@@ -1128,7 +1156,8 @@ pub fn init(app: &mut AppContext) {
             id!("Terminal") & id!(flags::IS_ANY_AI_ENABLED) & id!(flags::ACTIVE_AGENT_VIEW),
         )
         .with_mac_key_binding("ctrl-alt-]")
-        .with_linux_or_windows_key_binding("ctrl-alt-]"),
+        .with_linux_or_windows_key_binding("ctrl-alt-]")
+        .with_enabled(|| !cfg!(feature = "oss_slim")),
         EditableBinding::new(
             CYCLE_PREVIOUS_ORCHESTRATION_CHILD_AGENT_KEYBINDING,
             "Cycle to previous orchestration session",
@@ -1139,7 +1168,8 @@ pub fn init(app: &mut AppContext) {
             id!("Terminal") & id!(flags::IS_ANY_AI_ENABLED) & id!(flags::ACTIVE_AGENT_VIEW),
         )
         .with_mac_key_binding("ctrl-alt-[")
-        .with_linux_or_windows_key_binding("ctrl-alt-["),
+        .with_linux_or_windows_key_binding("ctrl-alt-[")
+        .with_enabled(|| !cfg!(feature = "oss_slim")),
     ]);
 
     // Register bindings for starting a new cloud agent conversation.
@@ -1153,7 +1183,8 @@ pub fn init(app: &mut AppContext) {
             id!("Terminal") & id!(flags::IS_ANY_AI_ENABLED),
         )
         .with_enabled(|| {
-            FeatureFlag::AgentView.is_enabled()
+            !cfg!(feature = "oss_slim")
+                && FeatureFlag::AgentView.is_enabled()
                 && FeatureFlag::CloudMode.is_enabled()
                 && FeatureFlag::CloudModeFromLocalSession.is_enabled()
         })
@@ -1168,7 +1199,8 @@ pub fn init(app: &mut AppContext) {
                 "cmd-meta-enter",
                 TerminalAction::EnterCloudAgentView,
                 id!("Terminal") & id!(flags::IS_ANY_AI_ENABLED),
-            )]);
+            )
+            .with_enabled(|| !cfg!(feature = "oss_slim"))]);
         }
     }
 }
@@ -1176,6 +1208,11 @@ pub fn init(app: &mut AppContext) {
 /// Registers bindings related to input modes.
 fn register_input_mode_bindings(app: &mut AppContext) {
     use warpui::keymap::macros::*;
+
+    if cfg!(feature = "oss_slim") {
+        let _ = app;
+        return;
+    }
 
     // A context predicate that matches when the input mode bindings are
     // available for use. Disabled when a CLI agent session is active — the

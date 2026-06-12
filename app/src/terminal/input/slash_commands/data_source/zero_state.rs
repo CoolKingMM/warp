@@ -99,6 +99,7 @@ impl SyncDataSource for ZeroStateDataSource {
             }
         }
 
+        #[cfg(not(feature = "oss_slim"))]
         if self.is_cloud_mode_v2
             && FeatureFlag::ListSkills.is_enabled()
             && AISettings::as_ref(app).is_any_ai_enabled(app)

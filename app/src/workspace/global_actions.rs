@@ -73,23 +73,26 @@ pub fn init_global_actions(app: &mut AppContext) {
     app.add_global_action("workspace:toggle_scroll_reporting", toggle_scroll_reporting);
     app.add_global_action("workspace:toggle_focus_reporting", toggle_focus_reporting);
     app.add_global_action("workspace:save_app", save_app);
-    app.add_global_action("workspace:fork_ai_conversation", fork_ai_conversation);
-    app.add_global_action(
-        "workspace:summarize_ai_conversation",
-        summarize_ai_conversation,
-    );
     app.add_global_action(
         "workspace:toggle_debug_network_status",
         toggle_debug_network_status,
     );
-    app.add_global_action(
-        "workspace:debug_create_anonymous_user",
-        create_anonymous_user,
-    );
     app.add_global_action("workspace:open_repository", open_repository);
     app.add_global_action("app:undo_close", undo_close);
-    app.add_global_action("app:maybe_log_out", trigger_maybe_log_out);
-    app.add_global_action("app:log_out", trigger_log_out);
+
+    if !cfg!(feature = "oss_slim") {
+        app.add_global_action("workspace:fork_ai_conversation", fork_ai_conversation);
+        app.add_global_action(
+            "workspace:summarize_ai_conversation",
+            summarize_ai_conversation,
+        );
+        app.add_global_action(
+            "workspace:debug_create_anonymous_user",
+            create_anonymous_user,
+        );
+        app.add_global_action("app:maybe_log_out", trigger_maybe_log_out);
+        app.add_global_action("app:log_out", trigger_log_out);
+    }
 }
 
 fn toggle_mouse_reporting(_: &(), ctx: &mut AppContext) {

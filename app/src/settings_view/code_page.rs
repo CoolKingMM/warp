@@ -114,7 +114,7 @@ impl CodeSubpage {
     pub fn title(&self) -> &'static str {
         match self {
             Self::Indexing => "Codebase Indexing",
-            Self::EditorAndCodeReview if cfg!(feature = "oss_minimal_assets") => {
+            Self::EditorAndCodeReview if cfg!(feature = "oss_slim") => {
                 "Editor and Projects"
             }
             Self::EditorAndCodeReview => "Editor and Code Review",
@@ -199,7 +199,7 @@ pub struct CodeSettingsPageView {
 
 impl CodeSettingsPageView {
     fn editor_and_projects_category_title() -> &'static str {
-        if cfg!(feature = "oss_minimal_assets") {
+        if cfg!(feature = "oss_slim") {
             "Editor and Projects"
         } else {
             "Code Editor and Review"
@@ -207,7 +207,7 @@ impl CodeSettingsPageView {
     }
 
     fn append_editor_project_widgets(widgets: &mut Vec<Box<dyn SettingsWidget<View = Self>>>) {
-        if !cfg!(feature = "oss_minimal_assets") {
+        if !cfg!(feature = "oss_slim") {
             widgets.push(Box::new(AutoOpenCodeReviewPaneCodeWidget::default()));
             widgets.push(Box::new(CodeReviewPanelToggleWidget::default()));
             widgets.push(Box::new(CodeReviewDiffStatsToggleWidget::default()));
@@ -218,6 +218,47 @@ impl CodeSettingsPageView {
     }
 
     pub fn new(ctx: &mut ViewContext<CodeSettingsPageView>) -> Self {
+        #[cfg(feature = "oss_slim")]
+        {
+            #[cfg(feature = "local_fs")]
+            let external_editor_view = Some(ctx.add_typed_action_view(ExternalEditorView::new));
+            #[cfg(feature = "local_fs")]
+            let mut widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
+                vec![Box::new(ExternalEditorCodeWidget)];
+            #[cfg(not(feature = "local_fs"))]
+            let mut widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
+
+            Self::append_editor_project_widgets(&mut widgets);
+
+            let page = if FeatureFlag::OpenWarpNewSettingsModes.is_enabled() {
+                PageType::new_categorized(
+                    vec![Category::new(
+                        Self::editor_and_projects_category_title(),
+                        widgets,
+                    )],
+                    None,
+                )
+            } else {
+                PageType::new_uncategorized(widgets, None)
+            };
+
+            return Self {
+                page,
+                active_subpage: Some(CodeSubpage::EditorAndCodeReview),
+                codebase_manual_resync_mouse_states: Vec::new(),
+                codebase_delete_mouse_states: Vec::new(),
+                #[cfg(not(target_family = "wasm"))]
+                remote_codebase_manual_resync_mouse_states: Vec::new(),
+                #[cfg(not(target_family = "wasm"))]
+                remote_codebase_delete_mouse_states: Vec::new(),
+                lsp_row_mouse_states: Vec::new(),
+                open_project_rules_mouse_states: Vec::new(),
+                suggested_server_statuses: HashMap::new(),
+                #[cfg(feature = "local_fs")]
+                external_editor_view,
+            };
+        }
+
         let index_manager = CodebaseIndexManager::handle(ctx);
         let codebase_count = index_manager
             .as_ref(ctx)
@@ -388,7 +429,7 @@ impl CodeSettingsPageView {
             > = vec![];
             Self::append_editor_project_widgets(&mut code_editor_review_widgets);
             let mut categories = vec![];
-            if !cfg!(feature = "oss_minimal_assets") {
+            if !cfg!(feature = "oss_slim") {
                 categories.push(Category::new("Codebase Indexing", codebase_indexing_widgets));
             }
             categories.push(Category::new(
@@ -437,6 +478,12 @@ impl CodeSettingsPageView {
         subpage: Option<CodeSubpage>,
         ctx: &mut ViewContext<Self>,
     ) {
+        let subpage = if cfg!(feature = "oss_slim") {
+            Some(CodeSubpage::EditorAndCodeReview)
+        } else {
+            subpage
+        };
+
         if self.active_subpage != subpage {
             self.active_subpage = subpage;
             // Rebuild the page with the relevant widgets for the selected subpage,
@@ -483,6 +530,24 @@ impl CodeSettingsPageView {
     /// Builds the full categorized page with all Code widgets.
     /// Used for the default/legacy view and when resetting to all-widgets mode for search.
     fn build_full_page(ctx: &mut ViewContext<Self>) -> PageType<Self> {
+        #[cfg(feature = "oss_slim")]
+        {
+            #[cfg(feature = "local_fs")]
+            let mut widgets: Vec<Box<dyn SettingsWidget<View = Self>>> =
+                vec![Box::new(ExternalEditorCodeWidget)];
+            #[cfg(not(feature = "local_fs"))]
+            let mut widgets: Vec<Box<dyn SettingsWidget<View = Self>>> = vec![];
+
+            Self::append_editor_project_widgets(&mut widgets);
+            return PageType::new_categorized(
+                vec![Category::new(
+                    Self::editor_and_projects_category_title(),
+                    widgets,
+                )],
+                None,
+            );
+        }
+
         if FeatureFlag::OpenWarpNewSettingsModes.is_enabled() {
             let manual_add_directory_button = ctx.add_typed_action_view(|_| {
                 ActionButton::new("Index new folder", SecondaryTheme)
@@ -510,7 +575,7 @@ impl CodeSettingsPageView {
             > = vec![];
             Self::append_editor_project_widgets(&mut code_editor_review_widgets);
             let mut categories = vec![];
-            if !cfg!(feature = "oss_minimal_assets") {
+            if !cfg!(feature = "oss_slim") {
                 categories.push(Category::new("Codebase Indexing", codebase_indexing_widgets));
             }
             categories.push(Category::new(
@@ -916,7 +981,7 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
     context: &ContextPredicate,
     builder: fn(SettingsAction) -> T,
 ) {
-    if !cfg!(feature = "oss_minimal_assets") && FeatureFlag::FullSourceCodeEmbedding.is_enabled()
+    if !cfg!(feature = "oss_slim") && FeatureFlag::FullSourceCodeEmbedding.is_enabled()
     {
         ToggleSettingActionPair::add_toggle_setting_action_pairs_as_bindings(
             vec![ToggleSettingActionPair::new(
@@ -946,7 +1011,7 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
     if FeatureFlag::OpenWarpNewSettingsModes.is_enabled() {
         let mut toggle_pairs = vec![];
 
-        if !cfg!(feature = "oss_minimal_assets") {
+        if !cfg!(feature = "oss_slim") {
             toggle_pairs.extend([
                 ToggleSettingActionPair::new(
                     "auto open code review panel",
@@ -2668,7 +2733,7 @@ impl SettingsPageMeta for CodeSettingsPageView {
     }
 
     fn should_render(&self, _ctx: &AppContext) -> bool {
-        if cfg!(feature = "oss_minimal_assets") {
+        if cfg!(feature = "oss_slim") {
             return true;
         }
 
@@ -2677,7 +2742,7 @@ impl SettingsPageMeta for CodeSettingsPageView {
     }
 
     fn on_page_selected(&mut self, _: bool, ctx: &mut ViewContext<Self>) {
-        if cfg!(feature = "oss_minimal_assets") {
+        if cfg!(feature = "oss_slim") {
             return;
         }
 

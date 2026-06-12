@@ -1,18 +1,10 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
-#[cfg(windows)]
-use std::fs::OpenOptions;
-#[cfg(windows)]
-use std::io::Write;
-#[cfg(windows)]
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use lazy_static::lazy_static;
 use winit::event::ElementState;
 #[cfg(windows)]
 use winit::keyboard::NativeKey;
-#[cfg(windows)]
-use winit::keyboard::KeyCode;
 use winit::keyboard::{Key, ModifiersState, NamedKey};
 #[cfg(not(target_family = "wasm"))]
 use winit::platform::modifier_supplement::KeyEventExtModifierSupplement;
@@ -73,18 +65,7 @@ lazy_static! {
 #[derive(Clone, Copy)]
 pub(super) struct InputMessageSourceDiagnostics {
     source_available: bool,
-    device_type: i32,
     origin_id: i32,
-}
-
-impl std::fmt::Debug for InputMessageSourceDiagnostics {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("InputMessageSourceDiagnostics")
-            .field("source_available", &self.source_available)
-            .field("device_type", &self.device_type)
-            .field("origin_id", &self.origin_id)
-            .finish()
-    }
 }
 
 impl InputMessageSourceDiagnostics {
@@ -111,8 +92,6 @@ pub fn convert_keyboard_input_event(
     window_state: &WindowState,
     is_synthetic: bool,
     non_hardware_input_message: bool,
-    input_message_source: InputMessageSourceDiagnostics,
-    typed_char_text_suppressed: bool,
 ) -> Option<crate::Event> {
     if input.state != ElementState::Pressed {
         return None;
@@ -135,11 +114,7 @@ pub fn convert_keyboard_input_event(
     }
 
     #[cfg(not(windows))]
-    let _ = (
-        non_hardware_input_message,
-        input_message_source,
-        typed_char_text_suppressed,
-    );
+    let _ = non_hardware_input_message;
 
     let mut chars = text_with_modifiers(&input, window_state.modifiers)
         .unwrap_or_default()
@@ -207,25 +182,7 @@ pub fn convert_keyboard_input_event(
     let suppress_alt_modified_control_chars =
         should_suppress_alt_modified_control_chars(&chars, window_state.modifiers, alt);
 
-    #[cfg(windows)]
-    let chars_before_suppression = chars.clone();
-
     if drop_windows_alt_c_control_event {
-        #[cfg(windows)]
-        log_windows_keyboard_input_diagnostic(
-            "convert_keyboard_input_event",
-            &input,
-            window_state,
-            is_synthetic,
-            input_message_source,
-            Some(&key),
-            Some(&chars),
-            None,
-            "drop_windows_alt_c_control_event",
-            Some(typed_char_text_suppressed),
-            Some(drop_windows_alt_c_control_event),
-            Some(suppress_alt_modified_control_chars),
-        );
         log::info!(
             "Dropping Windows Ctrl+C event from an Alt hotkey or non-hardware input so it is not \
              written to the terminal PTY as SIGINT"
@@ -261,39 +218,8 @@ pub fn convert_keyboard_input_event(
     // Ignore any keystrokes that we're purposefully not handling. (I.e. cmdorctrl-v needs to fall back
     // to the browser implementation on the web.)
     if KEYS_TO_IGNORE.contains(&keystroke) {
-        #[cfg(windows)]
-        log_windows_keyboard_input_diagnostic(
-            "convert_keyboard_input_event",
-            &input,
-            window_state,
-            is_synthetic,
-            input_message_source,
-            Some(&key),
-            Some(&chars_before_suppression),
-            Some(&chars),
-            "ignored_by_keys_to_ignore",
-            Some(typed_char_text_suppressed),
-            Some(drop_windows_alt_c_control_event),
-            Some(suppress_alt_modified_control_chars),
-        );
         return None;
     }
-
-    #[cfg(windows)]
-    log_windows_keyboard_input_diagnostic(
-        "convert_keyboard_input_event",
-        &input,
-        window_state,
-        is_synthetic,
-        input_message_source,
-        Some(&key),
-        Some(&chars_before_suppression),
-        Some(&chars),
-        "emit_key_down",
-        Some(typed_char_text_suppressed),
-        Some(drop_windows_alt_c_control_event),
-        Some(suppress_alt_modified_control_chars),
-    );
 
     Some(crate::event::Event::KeyDown {
         keystroke,
@@ -377,7 +303,6 @@ fn current_input_message_source_diagnostics_impl() -> InputMessageSourceDiagnost
     let source_available = unsafe { GetCurrentInputMessageSource(&mut source).is_ok() };
     InputMessageSourceDiagnostics {
         source_available,
-        device_type: source.deviceType.0,
         origin_id: source.originId.0,
     }
 }
@@ -386,165 +311,8 @@ fn current_input_message_source_diagnostics_impl() -> InputMessageSourceDiagnost
 fn current_input_message_source_diagnostics_impl() -> InputMessageSourceDiagnostics {
     InputMessageSourceDiagnostics {
         source_available: false,
-        device_type: 0,
         origin_id: 0,
     }
-}
-
-#[cfg(windows)]
-pub(super) fn log_windows_keyboard_input_diagnostic(
-    stage: &str,
-    input: &winit::event::KeyEvent,
-    window_state: &WindowState,
-    is_synthetic: bool,
-    input_message_source: InputMessageSourceDiagnostics,
-    converted_key: Option<&str>,
-    converted_chars: Option<&str>,
-    final_chars: Option<&str>,
-    action: &str,
-    typed_char_text_suppressed: Option<bool>,
-    suppress_windows_alt_c: Option<bool>,
-    suppress_alt_modified_control_chars: Option<bool>,
-) {
-    if !should_log_windows_keyboard_input_diagnostic(
-        input,
-        window_state,
-        input_message_source,
-        converted_key,
-        converted_chars,
-        final_chars,
-        suppress_windows_alt_c,
-        suppress_alt_modified_control_chars,
-    ) {
-        return;
-    }
-
-    let text_with_all_modifiers = text_with_modifiers(input, window_state.modifiers);
-    let key_without_modifiers = get_key_without_modifiers(input);
-    let physical_alt = physical_alt_key_pressed();
-    let effective_alt = effective_alt_key(
-        window_state.modifiers,
-        window_state.left_alt_pressed,
-        window_state.right_alt_pressed,
-    );
-
-    write_windows_alt_c_diagnostic(&format!(
-        "stage={} action={} state={:?} synthetic={} logical_key={:?} physical_key={:?} \
-         raw_text={:?} text_with_all_modifiers={:?} key_without_modifiers={:?} \
-         converted_key={:?} converted_chars={:?} final_chars={:?} \
-         typed_char_text_suppressed={:?} suppress_windows_alt_c={:?} \
-         suppress_alt_modified_control_chars={:?} modifiers={:?} left_alt_pressed={} \
-         right_alt_pressed={} recent_alt={} physical_alt={} effective_alt={} \
-         non_hardware_input_message={} input_message_source={:?} async_keys={}",
-        stage,
-        action,
-        input.state,
-        is_synthetic,
-        &input.logical_key,
-        &input.physical_key,
-        input.text.as_ref(),
-        text_with_all_modifiers,
-        key_without_modifiers,
-        converted_key,
-        converted_chars,
-        final_chars,
-        typed_char_text_suppressed,
-        suppress_windows_alt_c,
-        suppress_alt_modified_control_chars,
-        window_state.modifiers,
-        window_state.left_alt_pressed,
-        window_state.right_alt_pressed,
-        window_state.recent_alt_key_interaction(),
-        physical_alt,
-        effective_alt,
-        input_message_source.is_non_hardware(),
-        input_message_source,
-        windows_async_key_state_snapshot(),
-    ));
-}
-
-#[cfg(windows)]
-fn should_log_windows_keyboard_input_diagnostic(
-    input: &winit::event::KeyEvent,
-    window_state: &WindowState,
-    input_message_source: InputMessageSourceDiagnostics,
-    converted_key: Option<&str>,
-    converted_chars: Option<&str>,
-    final_chars: Option<&str>,
-    suppress_windows_alt_c: Option<bool>,
-    suppress_alt_modified_control_chars: Option<bool>,
-) -> bool {
-    let physical_key_interesting = matches!(
-        input.physical_key,
-        winit::keyboard::PhysicalKey::Code(
-            KeyCode::AltLeft
-                | KeyCode::AltRight
-                | KeyCode::ControlLeft
-                | KeyCode::ControlRight
-                | KeyCode::KeyC
-        )
-    );
-    let logical_key_interesting = matches!(
-        &input.logical_key,
-        Key::Character(character) if character.eq_ignore_ascii_case("c")
-    );
-    let text_with_all_modifiers = text_with_modifiers(input, window_state.modifiers);
-    let interesting_text = [
-        input.text.as_deref(),
-        text_with_all_modifiers,
-        converted_chars,
-        final_chars,
-        converted_key,
-    ]
-    .into_iter()
-    .flatten()
-    .any(|text| text == "\x03" || text.eq_ignore_ascii_case("c"));
-
-    physical_key_interesting
-        || logical_key_interesting
-        || interesting_text
-        || window_state.modifiers.control_key()
-        || window_state.modifiers.alt_key()
-        || window_state.left_alt_pressed
-        || window_state.right_alt_pressed
-        || window_state.recent_alt_key_interaction()
-        || input_message_source.is_non_hardware()
-        || suppress_windows_alt_c.unwrap_or(false)
-        || suppress_alt_modified_control_chars.unwrap_or(false)
-}
-
-#[cfg(windows)]
-fn write_windows_alt_c_diagnostic(message: &str) {
-    let path = std::env::temp_dir().join("warp-alt-c-diagnostics.log");
-    let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) else {
-        return;
-    };
-
-    let Ok(now) = SystemTime::now().duration_since(UNIX_EPOCH) else {
-        let _ = writeln!(file, "[time_unavailable] {message}");
-        return;
-    };
-    let millis = now.subsec_millis();
-    let _ = writeln!(file, "[{}.{:03}] {message}", now.as_secs(), millis);
-}
-
-#[cfg(windows)]
-fn windows_async_key_state_snapshot() -> String {
-    format!(
-        "vk_menu={} vk_lmenu={} vk_rmenu={} vk_control={} vk_lcontrol={} vk_rcontrol={} vk_c={}",
-        windows_async_key_state(VK_MENU.0 as i32),
-        windows_async_key_state(VK_LMENU.0 as i32),
-        windows_async_key_state(VK_RMENU.0 as i32),
-        windows_async_key_state(0x11),
-        windows_async_key_state(0xA2),
-        windows_async_key_state(0xA3),
-        windows_async_key_state(0x43),
-    )
-}
-
-#[cfg(windows)]
-fn windows_async_key_state(vkey: i32) -> i16 {
-    unsafe { GetAsyncKeyState(vkey) }
 }
 
 #[cfg(windows)]

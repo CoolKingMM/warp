@@ -70,6 +70,10 @@ if ($DEBUG_BUILD) {
     # catch violations that would otherwise silently pass in
     # a normal release build (e.g. in stable).
     $CARGO_PROFILE = 'rltoda'
+} elseif ("$CHANNEL" -eq 'oss') {
+    # The OSS Windows build is optimized for GitHub-hosted release time and
+    # installer size rather than maximum runtime throughput.
+    $CARGO_PROFILE = 'osslite'
 } else {
     $CARGO_PROFILE = 'rlto'
 }
@@ -115,12 +119,23 @@ if ("$CHANNEL" -eq 'local') {
     $BINARY_NAME = 'warp-oss.exe'
     $APP_NAME = 'WarpOss'
     # The OSS channel does not ship Sentry, so drop the crash_reporting feature
-    # (which would otherwise pull in the Sentry SDK as a dependency).
-    $FEATURES = 'release_bundle,gui'
+    # (which would otherwise pull in the Sentry SDK as a dependency). We also
+    # avoid Cargo's very large default feature set and keep the fork focused on
+    # local terminal + lightweight file editing use.
+    $FEATURES = 'release_bundle,nld_heuristic_v2,settings_file,tabbed_editor_view,file_tree,code_find_replace,rect_selection,ligatures,kitty_keyboard_protocol,trim_trailing_blank_lines'
 }
 
-# All channels ship the v3 classifier and v2 heuristic.
-$FEATURES = "$FEATURES,nld_classifier_v3,nld_heuristic_v2"
+if ("$CHANNEL" -ne 'oss') {
+    # Internal channels ship the ONNX classifier and v2 heuristic. The OSS fork
+    # keeps only the lightweight heuristic to avoid compiling and embedding the
+    # BERT-tiny classifier stack.
+    $FEATURES = "$FEATURES,nld_classifier_v3,nld_heuristic_v2"
+}
+
+$CARGO_FEATURE_ARGS = @('--features', "$FEATURES")
+if ("$CHANNEL" -eq 'oss') {
+    $CARGO_FEATURE_ARGS = @('--no-default-features') + $CARGO_FEATURE_ARGS
+}
 
 $BINARY_PATH = "$CARGO_TARGET_OUTPUT_DIR\$BINARY_NAME"
 $BUNDLE_ID = "dev.warp.$APP_NAME"
@@ -141,7 +156,7 @@ if ($DEBUG_BUILD) {
 # then exit.  We use this script to invoke `cargo check` to ensure that we are
 # using the same feature flags and profile that we would be using in production.
 if ($CHECK_ONLY) {
-    cargo check -p warp @CARGO_PROFILE_ARGS --bin "$WARP_BIN" --features "$FEATURES" --target $PLATFORM_TARGET
+    cargo check -p warp @CARGO_PROFILE_ARGS --bin "$WARP_BIN" @CARGO_FEATURE_ARGS --target $PLATFORM_TARGET
     if (-Not $?) {
         Write-Error "Failed to verify Warp $WARP_BIN compilation with profile $CARGO_PROFILE"
         exit 1
@@ -153,7 +168,7 @@ if (-Not $SKIP_BUILD_BINARY) {
     Write-Output "Building Warp for channel $CHANNEL and bundle id $BUNDLE_ID"
     $env:CARGO_BIN_NAME = $CHANNEL
     $env:WARP_APP_NAME = $APP_NAME
-    cargo build -p warp @CARGO_PROFILE_ARGS --bin "$WARP_BIN" --features "$FEATURES" --target $PLATFORM_TARGET
+    cargo build -p warp @CARGO_PROFILE_ARGS --bin "$WARP_BIN" @CARGO_FEATURE_ARGS --target $PLATFORM_TARGET
     if (-Not $?) {
         Write-Error "Failed to build Warp $WARP_BIN binary with profile $CARGO_PROFILE"
         exit 1

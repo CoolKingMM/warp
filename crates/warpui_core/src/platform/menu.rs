@@ -22,14 +22,15 @@ pub struct Menu {
 
 impl Menu {
     pub fn new<S: Into<String>>(title: S, menu_items: Vec<MenuItem>) -> Self {
+        let title = title.into();
         Menu {
-            title: title.into(),
+            title: crate::localization::localize_string(title),
             menu_items,
         }
     }
 
     pub fn is_window_menu(&self) -> bool {
-        &self.title == "Window"
+        self.title == "Window" || self.title == "窗口"
     }
 }
 
@@ -57,7 +58,7 @@ pub struct MenuItemProperties {
 impl MenuItemProperties {
     pub fn apply(&mut self, changes: &MenuItemPropertyChanges) {
         if let Some(name) = &changes.name {
-            self.name.clone_from(name);
+            self.name = crate::localization::localize_string(name.clone());
         }
         if let Some(keystroke) = changes.keystroke.as_ref() {
             self.keystroke.clone_from(keystroke);
@@ -131,9 +132,10 @@ impl CustomMenuItem {
         updater: Updater,
         keystroke: Option<Keystroke>,
     ) -> Self {
+        let name = crate::localization::localize_string(name.to_string());
         Self {
             properties: MenuItemProperties {
-                name: name.to_string(),
+                name,
                 keystroke,
                 ..Default::default()
             },
@@ -154,9 +156,10 @@ impl CustomMenuItem {
         keystroke: Option<Keystroke>,
         submenu: Vec<MenuItem>,
     ) -> Self {
+        let name = crate::localization::localize_string(name.to_string());
         Self {
             properties: MenuItemProperties {
-                name: name.to_string(),
+                name,
                 keystroke,
                 ..Default::default()
             },

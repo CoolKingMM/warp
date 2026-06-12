@@ -25,8 +25,6 @@ use self::key_events::{
     convert_keyboard_input_event, current_input_message_source_diagnostics,
     should_suppress_windows_ctrl_c_text,
 };
-#[cfg(windows)]
-use self::key_events::log_windows_keyboard_input_diagnostic;
 use super::app::ClipboardEvent;
 use super::window::DEFAULT_TITLEBAR_HEIGHT;
 #[cfg(windows)]
@@ -1312,21 +1310,6 @@ impl EventLoop {
                     (&event.text, &event.physical_key)
                 {
                     if let Ok(mapped_keycode) = try_from_winit_keycode(keycode) {
-                        #[cfg(windows)]
-                        log_windows_keyboard_input_diagnostic(
-                            "window_event_keyboard_input",
-                            &event,
-                            window_state,
-                            is_synthetic,
-                            input_message_source,
-                            None,
-                            None,
-                            None,
-                            "emit_modifier_key_changed",
-                            None,
-                            None,
-                            None,
-                        );
                         return Some(ConvertedEvent::ModifierKeyChanged {
                             key_code: mapped_keycode,
                             state: event.state,
@@ -1358,8 +1341,6 @@ impl EventLoop {
                     window_state,
                     is_synthetic,
                     non_hardware_input_message,
-                    input_message_source,
-                    typed_char_text_suppressed,
                 ) {
                     Some(warp_ui_event) => Some(ConvertedEvent::KeyDownWithTypedCharacters {
                         chars: event_text,

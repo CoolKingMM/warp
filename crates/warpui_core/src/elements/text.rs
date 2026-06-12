@@ -270,7 +270,7 @@ impl Text {
     #[cfg_attr(debug_assertions, track_caller)]
     pub fn new(text: impl Into<Cow<'static, str>>, family_id: FamilyId, font_size: f32) -> Self {
         Self {
-            text: text.into(),
+            text: crate::localization::localize_cow(text.into()),
             soft_wrap: true,
             family_id,
             font_properties: Properties::default(),

@@ -80,7 +80,7 @@ const MIN_VELOCITY_TIME_DELTA: f32 = 0.004; // Floor for time deltas to prevent 
 
 /// Clipboard launchers on Windows can handle Alt+C globally and then inject Ctrl+C back into
 /// the previously focused app to capture selected text. Suppress that injected Ctrl+C briefly.
-const RECENT_ALT_CTRL_C_SUPPRESSION_INTERVAL: Duration = Duration::from_millis(1500);
+const RECENT_ALT_CTRL_C_SUPPRESSION_INTERVAL: Duration = Duration::from_millis(500);
 
 /// TryFrom implementation for converting winit's `KeyCode` to
 /// `crate::platform::keyboard::KeyCode`.

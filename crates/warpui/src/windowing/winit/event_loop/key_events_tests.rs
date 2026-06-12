@@ -202,20 +202,16 @@ fn suppresses_alt_modified_control_chars_only() {
 }
 
 #[test]
-fn suppresses_windows_ctrl_c_keydown_after_recent_alt_or_non_hardware_source() {
+fn suppresses_windows_ctrl_c_keydown_only_after_recent_alt() {
     assert_eq!(
         should_suppress_windows_ctrl_c_keydown("c", ModifiersState::CONTROL, true, false),
-        cfg!(windows),
-    );
-    assert_eq!(
-        should_suppress_windows_ctrl_c_keydown("c", ModifiersState::CONTROL, false, true),
         cfg!(windows),
     );
     assert!(!should_suppress_windows_ctrl_c_keydown(
         "c",
         ModifiersState::CONTROL,
         false,
-        false,
+        true,
     ));
     assert!(!should_suppress_windows_ctrl_c_keydown(
         "c",
@@ -232,20 +228,16 @@ fn suppresses_windows_ctrl_c_keydown_after_recent_alt_or_non_hardware_source() {
 }
 
 #[test]
-fn suppresses_windows_ctrl_c_text_after_recent_alt_or_non_hardware_source() {
+fn suppresses_windows_ctrl_c_text_only_after_recent_alt() {
     assert_eq!(
         should_suppress_windows_ctrl_c_text("\x03", ModifiersState::CONTROL, true, false),
-        cfg!(windows),
-    );
-    assert_eq!(
-        should_suppress_windows_ctrl_c_text("\x03", ModifiersState::empty(), false, true),
         cfg!(windows),
     );
     assert!(!should_suppress_windows_ctrl_c_text(
         "\x03",
         ModifiersState::CONTROL,
         false,
-        false,
+        true,
     ));
     assert!(!should_suppress_windows_ctrl_c_text(
         "\x03",
@@ -286,7 +278,7 @@ fn drops_windows_alt_c_reported_as_ctrl_c_only() {
         false,
         false,
     ));
-    assert!(super::should_drop_windows_alt_c_control_event(
+    assert!(!super::should_drop_windows_alt_c_control_event(
         "c",
         "",
         ModifiersState::CONTROL,
@@ -302,10 +294,18 @@ fn drops_windows_alt_c_reported_as_ctrl_c_only() {
         true,
         false,
     ));
-    assert!(super::should_drop_windows_alt_c_control_event(
+    assert!(!super::should_drop_windows_alt_c_control_event(
         "c",
         "\x03",
         ModifiersState::empty(),
+        false,
+        false,
+        true,
+    ));
+    assert!(!super::should_drop_windows_alt_c_control_event(
+        "c",
+        "\x03",
+        ModifiersState::CONTROL,
         false,
         false,
         true,

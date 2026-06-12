@@ -353,23 +353,18 @@ pub(super) fn should_suppress_windows_ctrl_c_keydown(
     key: &str,
     modifiers: ModifiersState,
     recent_alt_key_interaction: bool,
-    non_hardware_input_message: bool,
+    _non_hardware_input_message: bool,
 ) -> bool {
-    cfg!(windows)
-        && key == "c"
-        && modifiers.control_key()
-        && (non_hardware_input_message || recent_alt_key_interaction)
+    cfg!(windows) && key == "c" && modifiers.control_key() && recent_alt_key_interaction
 }
 
 pub(super) fn should_suppress_windows_ctrl_c_text(
     chars: &str,
     modifiers: ModifiersState,
     recent_alt_key_interaction: bool,
-    non_hardware_input_message: bool,
+    _non_hardware_input_message: bool,
 ) -> bool {
-    cfg!(windows)
-        && chars == "\x03"
-        && (non_hardware_input_message || (modifiers.control_key() && recent_alt_key_interaction))
+    cfg!(windows) && chars == "\x03" && modifiers.control_key() && recent_alt_key_interaction
 }
 
 pub(super) fn current_input_message_source_diagnostics() -> InputMessageSourceDiagnostics {

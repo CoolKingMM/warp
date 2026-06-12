@@ -11,6 +11,8 @@ use warpui_core::AssetProvider;
 #[cfg_attr(target_family = "wasm", exclude = "async/**")]
 #[cfg_attr(feature = "oss_minimal_assets", exclude = "async/png/onboarding/**")]
 #[cfg_attr(feature = "oss_minimal_assets", exclude = "async/png/*.png")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/png/blue.png")]
+#[cfg_attr(feature = "oss_minimal_assets", exclude = "bundled/png/dev.png")]
 // Excludes take precedence.
 // Standalone CLI builds (the `oz` tarball) are headless and never render the
 // onboarding/theme imagery in `async/`, so we exclude those bytes from the

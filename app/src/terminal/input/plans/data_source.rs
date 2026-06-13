@@ -35,6 +35,10 @@ impl SyncDataSource for PlanMenuDataSource {
         query: &Query,
         app: &AppContext,
     ) -> Result<Vec<QueryResult<Self::Action>>, DataSourceRunErrorWrapper> {
+        if cfg!(feature = "oss_slim") {
+            return Ok(Vec::new());
+        }
+
         let doc_model = AIDocumentModel::as_ref(app);
         let docs = doc_model.get_all_documents_for_conversation(self.conversation_id);
         let query_text = query.text.trim().to_lowercase();

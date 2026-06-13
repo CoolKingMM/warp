@@ -348,6 +348,10 @@ impl TerminalView {
         conversation_id: AIConversationId,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         let document_model = AIDocumentModel::handle(ctx);
 
         for exchange in exchanges {

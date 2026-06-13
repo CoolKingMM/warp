@@ -27162,40 +27162,42 @@ impl TypedActionView for TerminalView {
                 }
             }
             ToggleAIDocumentPane => {
-                if let Some(conversation) =
-                    BlocklistAIHistoryModel::as_ref(ctx).active_conversation(self.id())
-                {
-                    let conversation_id = conversation.id();
-                    let doc_model = AIDocumentModel::as_ref(ctx);
-                    let is_plan_for_this_conversation_open = self
-                        .agent_view_controller
-                        .as_ref(ctx)
-                        .pane_group_id()
-                        .is_some_and(|pane_group_id| {
-                            doc_model.is_document_visible_by_conversation_in_pane_group(
-                                &conversation_id,
-                                pane_group_id,
-                            )
-                        });
-                    if is_plan_for_this_conversation_open {
-                        ctx.emit(Event::HideAIDocumentPanes);
-                    } else {
-                        let docs = doc_model.get_all_documents_for_conversation(conversation_id);
-                        match docs.len() {
-                            0 => {} // No plans — nothing to do.
-                            1 => {
-                                let (document_id, doc) = &docs[0];
-                                ctx.emit(Event::OpenAIDocumentPane {
-                                    document_id: *document_id,
-                                    document_version: doc.version,
-                                    is_auto_open: false,
-                                });
-                            }
-                            _ => {
-                                // Multiple plans — open the plan picker menu.
-                                self.input.update(ctx, |input, ctx| {
-                                    input.open_plan_menu(conversation_id, ctx);
-                                });
+                if !cfg!(feature = "oss_slim") {
+                    if let Some(conversation) =
+                        BlocklistAIHistoryModel::as_ref(ctx).active_conversation(self.id())
+                    {
+                        let conversation_id = conversation.id();
+                        let doc_model = AIDocumentModel::as_ref(ctx);
+                        let is_plan_for_this_conversation_open = self
+                            .agent_view_controller
+                            .as_ref(ctx)
+                            .pane_group_id()
+                            .is_some_and(|pane_group_id| {
+                                doc_model.is_document_visible_by_conversation_in_pane_group(
+                                    &conversation_id,
+                                    pane_group_id,
+                                )
+                            });
+                        if is_plan_for_this_conversation_open {
+                            ctx.emit(Event::HideAIDocumentPanes);
+                        } else {
+                            let docs = doc_model.get_all_documents_for_conversation(conversation_id);
+                            match docs.len() {
+                                0 => {} // No plans — nothing to do.
+                                1 => {
+                                    let (document_id, doc) = &docs[0];
+                                    ctx.emit(Event::OpenAIDocumentPane {
+                                        document_id: *document_id,
+                                        document_version: doc.version,
+                                        is_auto_open: false,
+                                    });
+                                }
+                                _ => {
+                                    // Multiple plans — open the plan picker menu.
+                                    self.input.update(ctx, |input, ctx| {
+                                        input.open_plan_menu(conversation_id, ctx);
+                                    });
+                                }
                             }
                         }
                     }

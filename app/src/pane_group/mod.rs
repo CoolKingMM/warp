@@ -1555,6 +1555,9 @@ impl PaneGroup {
     ) -> anyhow::Result<(PaneData, InitialFocus)> {
         let custom_vertical_tabs_title = leaf.custom_vertical_tabs_title.clone();
         let result = match leaf.contents {
+            LeafContents::AIDocument(_) if cfg!(feature = "oss_slim") => Err(anyhow::anyhow!(
+                "AI document panes are not restored in OSS slim builds"
+            )),
             LeafContents::AIDocument(_) => {
                 // Defer AI document pane restoration until after terminal panes are restored.
                 // We do this because the terminal view seeds the AIDocumentModel as part of
@@ -2359,6 +2362,10 @@ impl PaneGroup {
         document_version: AIDocumentVersion,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         self.set_ai_document_pane_visibility(
             conversation_id,
             document_id,
@@ -2384,6 +2391,10 @@ impl PaneGroup {
         document_version: AIDocumentVersion,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         self.set_ai_document_pane_visibility(
             conversation_id,
             document_id,

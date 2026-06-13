@@ -16931,6 +16931,10 @@ impl Workspace {
     }
 
     fn attach_plan_as_context(&mut self, id: AIDocumentId, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         let Some(view) = self.active_session_view(ctx) else {
             let window_id = ctx.window_id();
             WorkspaceToastStack::handle(ctx).update(ctx, |toast_stack, ctx| {
@@ -24277,18 +24281,20 @@ impl TypedActionView for Workspace {
                 document_id,
                 document_version,
             } => {
-                let conversation_id =
-                    AIDocumentModel::as_ref(ctx).get_conversation_id_for_document_id(document_id);
+                if !cfg!(feature = "oss_slim") {
+                    let conversation_id = AIDocumentModel::as_ref(ctx)
+                        .get_conversation_id_for_document_id(document_id);
 
-                if let Some(conversation_id) = conversation_id {
-                    self.active_tab_pane_group().update(ctx, |pane_group, ctx| {
-                        pane_group.toggle_ai_document_pane(
-                            conversation_id,
-                            *document_id,
-                            *document_version,
-                            ctx,
-                        );
-                    });
+                    if let Some(conversation_id) = conversation_id {
+                        self.active_tab_pane_group().update(ctx, |pane_group, ctx| {
+                            pane_group.toggle_ai_document_pane(
+                                conversation_id,
+                                *document_id,
+                                *document_version,
+                                ctx,
+                            );
+                        });
+                    }
                 }
             }
             HideAIDocumentPanes => {
@@ -24300,18 +24306,20 @@ impl TypedActionView for Workspace {
                 document_id,
                 document_version,
             } => {
-                let conversation_id =
-                    AIDocumentModel::as_ref(ctx).get_conversation_id_for_document_id(document_id);
+                if !cfg!(feature = "oss_slim") {
+                    let conversation_id = AIDocumentModel::as_ref(ctx)
+                        .get_conversation_id_for_document_id(document_id);
 
-                if let Some(conversation_id) = conversation_id {
-                    self.active_tab_pane_group().update(ctx, |pane_group, ctx| {
-                        pane_group.open_ai_document_pane(
-                            conversation_id,
-                            *document_id,
-                            *document_version,
-                            ctx,
-                        );
-                    });
+                    if let Some(conversation_id) = conversation_id {
+                        self.active_tab_pane_group().update(ctx, |pane_group, ctx| {
+                            pane_group.open_ai_document_pane(
+                                conversation_id,
+                                *document_id,
+                                *document_version,
+                                ctx,
+                            );
+                        });
+                    }
                 }
             }
             TabHoverWidthStart { width } => {

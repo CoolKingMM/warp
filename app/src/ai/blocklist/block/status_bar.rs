@@ -284,10 +284,12 @@ impl BlocklistAIStatusBar {
             ctx.notify();
         });
 
-        ctx.observe(&AITipModel::handle(ctx), |me, tip_model, ctx| {
-            me.current_tip = tip_model.as_ref(ctx).current_tip().cloned();
-            ctx.notify();
-        });
+        if !cfg!(feature = "oss_slim") {
+            ctx.observe(&AITipModel::handle(ctx), |me, tip_model, ctx| {
+                me.current_tip = tip_model.as_ref(ctx).current_tip().cloned();
+                ctx.notify();
+            });
+        }
 
         let summarization_cancel_dialog =
             ctx.add_typed_action_view(|_| SummarizationCancelDialog::default());
@@ -480,7 +482,7 @@ impl BlocklistAIStatusBar {
             self.is_summarization_cancel_dialog_open = false;
             self.stop_summarization_timer();
 
-            if FeatureFlag::AgentTips.is_enabled() {
+            if !cfg!(feature = "oss_slim") && FeatureFlag::AgentTips.is_enabled() {
                 self.update_agent_tip(ctx);
             }
         }
@@ -703,6 +705,11 @@ impl BlocklistAIStatusBar {
     }
 
     fn update_agent_tip(&mut self, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            self.current_tip = None;
+            return;
+        }
+
         if FeatureFlag::AgentTips.is_enabled() && *InputSettings::as_ref(ctx).show_agent_tips {
             let current_working_directory = self
                 .terminal_model
@@ -734,7 +741,10 @@ impl BlocklistAIStatusBar {
     }
 
     fn render_tip(&self, app: &AppContext) -> Option<Box<dyn Element>> {
-        if FeatureFlag::AgentTips.is_enabled() && *InputSettings::as_ref(app).show_agent_tips {
+        if !cfg!(feature = "oss_slim")
+            && FeatureFlag::AgentTips.is_enabled()
+            && *InputSettings::as_ref(app).show_agent_tips
+        {
             self.current_tip
                 .as_ref()
                 .map(|tip| render_agent_tip(tip, app))

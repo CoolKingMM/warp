@@ -347,6 +347,7 @@ pub fn init(app: &mut AppContext) {
             "Warpify subshell",
             TerminalAction::TriggerSubshellBootstrap,
         )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_key_binding("ctrl-i")
         .with_context_predicate(
             id!("Terminal") & !id!("IMEOpen") & id!("LongRunningCommand") & id!("SubshellBanner"),
@@ -356,6 +357,7 @@ pub fn init(app: &mut AppContext) {
             "Warpify ssh session",
             TerminalAction::WarpifySSHSession,
         )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_key_binding("ctrl-i")
         .with_context_predicate(
             id!("Terminal")
@@ -597,6 +599,7 @@ pub fn init(app: &mut AppContext) {
             TerminalAction::OpenShareModal,
         )
         .with_custom_action(CustomAction::CreateBlockPermalink)
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(
             id!("Terminal") & eq!("TerminalView_BlockSelectionCardinality", "One"),
         ),
@@ -606,6 +609,7 @@ pub fn init(app: &mut AppContext) {
             TerminalAction::BookmarkSelectedBlock,
         )
         .with_custom_action(CustomAction::ToggleBookmarkBlock)
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(
             id!("Terminal") & ne!("TerminalView_BlockSelectionCardinality", "None"),
         ),
@@ -1260,7 +1264,7 @@ fn register_input_mode_bindings(app: &mut AppContext) {
             & !id!(flags::HAS_PENDING_PROMPT_SUGGESTION)
             & !id!(SSH_ERROR_BLOCK_VISIBLE_KEY),
     )
-    .with_enabled(|| FeatureFlag::AgentView.is_enabled())]);
+    .with_enabled(|| !cfg!(feature = "oss_slim") && FeatureFlag::AgentView.is_enabled())]);
 
     app.register_editable_bindings([
         EditableBinding::new(
@@ -1269,6 +1273,7 @@ fn register_input_mode_bindings(app: &mut AppContext) {
             TerminalAction::SetInputModeAgent,
         )
         .with_group(bindings::BindingGroup::WarpAi.as_str())
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(agent_mode_predicate)
         .with_mac_key_binding("cmd-i")
         .with_linux_or_windows_key_binding("ctrl-i"),

@@ -381,8 +381,6 @@ impl SettingsSection {
                     | Self::Code
                     | Self::EditorAndCodeReview
                     | Self::Keybindings
-                    | Self::Warpify
-                    | Self::Privacy
                     | Self::About
             )
     }
@@ -627,13 +625,18 @@ pub fn init_actions_from_parent_view<T: Action + Clone>(
     context: &ContextPredicate,
     builder: fn(SettingsAction) -> T,
 ) {
-    main_page::init_actions_from_parent_view(app, context, builder);
     appearance_page::init_actions_from_parent_view(app, context, builder);
+    code_page::init_actions_from_parent_view(app, context, builder);
+
+    if cfg!(feature = "oss_slim") {
+        return;
+    }
+
+    main_page::init_actions_from_parent_view(app, context, builder);
     features_page::init_actions_from_parent_view(app, context, builder);
     warpify_page::init_actions_from_parent_view(app, context, builder);
     privacy_page::init_actions_from_parent_view(app, context, builder);
     ai_page::init_actions_from_parent_view(app, context, builder);
-    code_page::init_actions_from_parent_view(app, context, builder);
     warp_drive_page::init_actions_from_parent_view(app, context, builder);
 
     if ChannelState::enable_debug_features() || cfg!(windows) {
@@ -1206,8 +1209,6 @@ impl SettingsView {
                 SettingsPage::new(appearance_page_handle),
                 SettingsPage::new(code_page_handle),
                 SettingsPage::new(keybindings_handle),
-                SettingsPage::new(warpify_page_handle),
-                SettingsPage::new(privacy_page_handle),
                 SettingsPage::new(about_page_handle),
             ];
             environments_page_handle = None;
@@ -1377,8 +1378,6 @@ impl SettingsView {
                     vec![SettingsSection::EditorAndCodeReview],
                 )),
                 SettingsNavItem::Page(SettingsSection::Keybindings),
-                SettingsNavItem::Page(SettingsSection::Warpify),
-                SettingsNavItem::Page(SettingsSection::Privacy),
                 SettingsNavItem::Page(SettingsSection::About),
             ]
         } else {

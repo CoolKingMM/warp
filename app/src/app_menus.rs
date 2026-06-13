@@ -62,18 +62,24 @@ const MAX_RECENT_REPOS_IN_MENU: usize = 10;
 
 /// Creates the root app menu bar
 pub fn menu_bar(ctx: &mut AppContext) -> MenuBar {
-    MenuBar::new(vec![
+    let mut menus = vec![
         make_new_app_menu(ctx),
         make_new_file_menu(ctx),
         make_new_edit_menu(ctx),
         make_new_view_menu(ctx),
         make_new_tab_menu(ctx),
         make_new_blocks_menu(ctx),
-        make_new_ai_menu(ctx),
-        make_new_drive_menu(ctx),
-        make_new_window_menu(),
-        make_new_help_menu(),
-    ])
+    ];
+
+    if !cfg!(feature = "oss_slim") {
+        menus.push(make_new_ai_menu(ctx));
+        menus.push(make_new_drive_menu(ctx));
+    }
+
+    menus.push(make_new_window_menu());
+    menus.push(make_new_help_menu());
+
+    MenuBar::new(menus)
 }
 
 // Creates the app dock menu
@@ -143,18 +149,22 @@ fn make_new_app_menu(ctx: &AppContext) -> Menu {
         ctx,
     )];
 
-    if !FeatureFlag::AvatarInTabBar.is_enabled() {
+    if !cfg!(feature = "oss_slim") && !FeatureFlag::AvatarInTabBar.is_enabled() {
         menu_items.push(updateable_custom_item_without_checkmark(
             CustomAction::ToggleResourceCenter,
             ctx,
         ))
     }
 
-    menu_items.extend([
-        MenuItem::Separator,
-        updateable_custom_item_without_checkmark(CustomAction::ReferAFriend, ctx),
-        MenuItem::Separator,
-    ]);
+    if !cfg!(feature = "oss_slim") {
+        menu_items.extend([
+            MenuItem::Separator,
+            updateable_custom_item_without_checkmark(CustomAction::ReferAFriend, ctx),
+            MenuItem::Separator,
+        ]);
+    } else {
+        menu_items.push(MenuItem::Separator);
+    }
 
     let preferences_menu_items = vec![
         updateable_custom_item_without_checkmark(CustomAction::ShowSettings, ctx),
@@ -375,21 +385,38 @@ fn make_new_edit_menu(ctx: &AppContext) -> Menu {
 }
 
 fn make_new_view_menu(ctx: &AppContext) -> Menu {
-    let mut items = vec![
-        updateable_custom_item_without_checkmark(CustomAction::ToggleWarpDrive, ctx),
-        MenuItem::Separator,
+    let mut items = vec![];
+
+    if !cfg!(feature = "oss_slim") {
+        items.extend([
+            updateable_custom_item_without_checkmark(CustomAction::ToggleWarpDrive, ctx),
+            MenuItem::Separator,
+        ]);
+    }
+
+    items.extend([
         updateable_custom_item_without_checkmark(CustomAction::CommandPalette, ctx),
         updateable_custom_item_without_checkmark(CustomAction::NavigationPalette, ctx),
         updateable_custom_item_without_checkmark(CustomAction::LaunchConfigPalette, ctx),
         updateable_custom_item_without_checkmark(CustomAction::FilesPalette, ctx),
         updateable_custom_item_without_checkmark(CustomAction::ToggleProjectExplorer, ctx),
-        updateable_custom_item_without_checkmark(CustomAction::ToggleConversationListView, ctx),
         updateable_custom_item_without_checkmark(CustomAction::ToggleGlobalSearch, ctx),
         MenuItem::Separator,
         updateable_custom_item_without_checkmark(CustomAction::History, ctx),
         updateable_custom_item_without_checkmark(CustomAction::CommandSearch, ctx),
-        updateable_custom_item_without_checkmark(CustomAction::Workflows, ctx),
-        MenuItem::Separator,
+    ]);
+
+    if !cfg!(feature = "oss_slim") {
+        items.extend([
+            updateable_custom_item_without_checkmark(CustomAction::ToggleConversationListView, ctx),
+            updateable_custom_item_without_checkmark(CustomAction::Workflows, ctx),
+            MenuItem::Separator,
+        ]);
+    } else {
+        items.push(MenuItem::Separator);
+    }
+
+    items.extend([
         MenuItem::Custom(CustomMenuItem::new(
             "Toggle Mouse Reporting",
             move |ctx| {
@@ -436,7 +463,7 @@ fn make_new_view_menu(ctx: &AppContext) -> Menu {
             },
             None,
         )),
-    ];
+    ]);
 
     let is_compact_mode = matches!(
         TerminalSettings::handle(ctx)
@@ -564,12 +591,23 @@ fn make_new_blocks_menu(ctx: &AppContext) -> Menu {
         ctx,
     ));
     items.push(MenuItem::Separator);
+    if !cfg!(feature = "oss_slim") {
+        items.extend([
+            updateable_custom_item_without_checkmark(CustomAction::CreateBlockPermalink, ctx),
+            non_updateable_custom_item(CustomAction::ViewSharedBlocks, ctx),
+            updateable_custom_item_without_checkmark(CustomAction::ToggleBookmarkBlock, ctx),
+            updateable_custom_item_without_checkmark(CustomAction::FindWithinBlock, ctx),
+            MenuItem::Separator,
+        ]);
+    } else {
+        items.push(updateable_custom_item_without_checkmark(
+            CustomAction::FindWithinBlock,
+            ctx,
+        ));
+        items.push(MenuItem::Separator);
+    }
+
     items.extend([
-        updateable_custom_item_without_checkmark(CustomAction::CreateBlockPermalink, ctx),
-        non_updateable_custom_item(CustomAction::ViewSharedBlocks, ctx),
-        updateable_custom_item_without_checkmark(CustomAction::ToggleBookmarkBlock, ctx),
-        updateable_custom_item_without_checkmark(CustomAction::FindWithinBlock, ctx),
-        MenuItem::Separator,
         updateable_custom_item_without_checkmark(CustomAction::CopyBlock, ctx),
         updateable_custom_item_without_checkmark(CustomAction::CopyBlockCommand, ctx),
         updateable_custom_item_without_checkmark(CustomAction::CopyBlockOutput, ctx),
@@ -1006,39 +1044,46 @@ fn make_new_elements_menu_items(ctx: &AppContext) -> Vec<MenuItem> {
             },
             Some(Keystroke::parse("cmd-t").expect("Valid keystroke")),
         )),
-        MenuItem::Custom(CustomMenuItem::new(
-            "New Agent Tab",
-            open_new_agent_tab_or_window,
-            move |_props: &MenuItemProperties, ctx: &mut AppContext| {
-                let mut changes = MenuItemPropertyChanges::default();
-                let (is_any_ai_enabled, is_default_session_mode_agent) = AISettings::handle(ctx)
-                    .read(ctx, |ai_settings, ctx| {
-                        let enabled = ai_settings.is_any_ai_enabled(ctx);
-                        let agent = enabled
-                            && ai_settings.default_session_mode(ctx) == DefaultSessionMode::Agent;
-                        (enabled, agent)
-                    });
-                if !is_any_ai_enabled {
-                    changes.disabled = Some(true);
-                    return changes;
-                }
-                let trigger = if is_default_session_mode_agent {
-                    Trigger::Custom(CustomAction::NewTab.into())
-                } else {
-                    Trigger::Custom(CustomAction::NewAgentTab.into())
-                };
-                let binding = ctx
-                    .get_key_bindings()
-                    .find(|b| b.trigger == &trigger || b.original_trigger == Some(&trigger));
-                if let Some(binding) = binding {
-                    changes.keystroke = Some(bindings::trigger_to_keystroke(binding.trigger));
-                }
-                changes
-            },
-            None,
-        )),
         non_updateable_custom_item(CustomAction::NewFile, ctx),
     ];
+
+    if !cfg!(feature = "oss_slim") {
+        new_elements_menu.insert(
+            2,
+            MenuItem::Custom(CustomMenuItem::new(
+                "New Agent Tab",
+                open_new_agent_tab_or_window,
+                move |_props: &MenuItemProperties, ctx: &mut AppContext| {
+                    let mut changes = MenuItemPropertyChanges::default();
+                    let (is_any_ai_enabled, is_default_session_mode_agent) =
+                        AISettings::handle(ctx).read(ctx, |ai_settings, ctx| {
+                            let enabled = ai_settings.is_any_ai_enabled(ctx);
+                            let agent = enabled
+                                && ai_settings.default_session_mode(ctx)
+                                    == DefaultSessionMode::Agent;
+                            (enabled, agent)
+                        });
+                    if !is_any_ai_enabled {
+                        changes.disabled = Some(true);
+                        return changes;
+                    }
+                    let trigger = if is_default_session_mode_agent {
+                        Trigger::Custom(CustomAction::NewTab.into())
+                    } else {
+                        Trigger::Custom(CustomAction::NewAgentTab.into())
+                    };
+                    let binding = ctx
+                        .get_key_bindings()
+                        .find(|b| b.trigger == &trigger || b.original_trigger == Some(&trigger));
+                    if let Some(binding) = binding {
+                        changes.keystroke = Some(bindings::trigger_to_keystroke(binding.trigger));
+                    }
+                    changes
+                },
+                None,
+            )),
+        );
+    }
 
     let reopen_session_action_updater =
         custom_action_updater(CustomAction::ReopenClosedSession, Box::new(|_| false));

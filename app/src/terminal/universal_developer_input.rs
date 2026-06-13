@@ -437,10 +437,18 @@ impl UniversalDeveloperInputButtonBar {
         let ai_settings = AISettings::as_ref(ctx);
         let is_autodetection_enabled = ai_settings.is_ai_autodetection_enabled(ctx);
 
-        let mut options = vec![InputToggleMode::Terminal, InputToggleMode::AgentMode];
+        let mut options = if cfg!(feature = "oss_slim") {
+            vec![InputToggleMode::Terminal]
+        } else {
+            vec![InputToggleMode::Terminal, InputToggleMode::AgentMode]
+        };
 
-        let mut default_option = input_model.as_ref(ctx).into();
-        if is_autodetection_enabled {
+        let mut default_option = if cfg!(feature = "oss_slim") {
+            InputToggleMode::Terminal
+        } else {
+            input_model.as_ref(ctx).into()
+        };
+        if !cfg!(feature = "oss_slim") && is_autodetection_enabled {
             options.push(InputToggleMode::AutoDetection);
         } else if default_option == InputToggleMode::AutoDetection {
             // Don't set the default to auto-detection if it's not enabled.
@@ -505,7 +513,10 @@ impl UniversalDeveloperInputButtonBar {
                 let is_autodection_enabled =
                     ai_settings.as_ref(ctx).is_ai_autodetection_enabled(ctx);
                 me.segmented_control.update(ctx, |segmented_control, ctx| {
-                    if is_autodection_enabled {
+                    if cfg!(feature = "oss_slim") {
+                        segmented_control.update_options(vec![InputToggleMode::Terminal], ctx);
+                        segmented_control.set_selected_option(InputToggleMode::Terminal, ctx);
+                    } else if is_autodection_enabled {
                         segmented_control.update_options(
                             vec![
                                 InputToggleMode::Terminal,
@@ -579,7 +590,11 @@ impl UniversalDeveloperInputButtonBar {
             if !event.did_update_input_config() {
                 return;
             }
-            let input_mode = InputToggleMode::from(input_model.as_ref(ctx));
+            let input_mode = if cfg!(feature = "oss_slim") {
+                InputToggleMode::Terminal
+            } else {
+                InputToggleMode::from(input_model.as_ref(ctx))
+            };
             me.segmented_control.update(ctx, |control, ctx| {
                 control.set_selected_option(input_mode, ctx);
             });
@@ -796,6 +811,10 @@ impl View for UniversalDeveloperInputButtonBar {
         let theme = appearance.theme();
         #[cfg(feature = "voice_input")]
         let is_voice_input_enabled = AISettings::as_ref(app).is_voice_input_enabled(app);
+
+        if cfg!(feature = "oss_slim") {
+            return Flex::row().finish();
+        }
 
         // Helper function to create a 1px vertical divider
         let create_divider = || {

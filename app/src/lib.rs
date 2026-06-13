@@ -1430,7 +1430,6 @@ pub(crate) fn initialize_app(
         ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
     }
     ctx.add_singleton_model(|_| NetworkLogPaneManager::default());
-    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(|_| pricing::PricingInfoModel::new());
     #[cfg(not(feature = "oss_slim"))]
     {

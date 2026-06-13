@@ -3214,18 +3214,20 @@ impl Workspace {
             ctx.notify();
         });
 
-        ctx.subscribe_to_model(
-            &crate::workspace::bonus_grant_notification_model::BonusGrantNotificationModel::handle(
-                ctx,
-            ),
-            |me, _, event, ctx| {
-                let BonusGrantNotificationEvent::ShowNotification { message, .. } = event;
-                me.toast_stack.update(ctx, |toast_stack, ctx| {
-                    toast_stack
-                        .add_persistent_toast(DismissibleToast::success(message.clone()), ctx);
-                });
-            },
-        );
+        if !cfg!(feature = "oss_slim") {
+            ctx.subscribe_to_model(
+                &crate::workspace::bonus_grant_notification_model::BonusGrantNotificationModel::handle(
+                    ctx,
+                ),
+                |me, _, event, ctx| {
+                    let BonusGrantNotificationEvent::ShowNotification { message, .. } = event;
+                    me.toast_stack.update(ctx, |toast_stack, ctx| {
+                        toast_stack
+                            .add_persistent_toast(DismissibleToast::success(message.clone()), ctx);
+                    });
+                },
+            );
+        }
 
         let mut ws = Self {
             tabs: Vec::new(),

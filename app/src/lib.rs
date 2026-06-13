@@ -1424,11 +1424,8 @@ pub(crate) fn initialize_app(
     App::record_last_active_timestamp();
 
     ctx.add_singleton_model(|_| SettingsPaneManager::new());
-    #[cfg(not(feature = "oss_slim"))]
-    {
-        ctx.add_singleton_model(|_| AIFactManager::new());
-        ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
-    }
+    ctx.add_singleton_model(|_| AIFactManager::new());
+    ctx.add_singleton_model(|_| ExecutionProfileEditorManager::default());
     ctx.add_singleton_model(|_| NetworkLogPaneManager::default());
     ctx.add_singleton_model(|_| pricing::PricingInfoModel::new());
     #[cfg(not(feature = "oss_slim"))]

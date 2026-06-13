@@ -49,10 +49,17 @@ DefaultDirName={autopf}\{#MyAppName}
 ArchitecturesAllowed={#Arch}
 ArchitecturesInstallIn64BitMode={#Arch}
 DisableProgramGroupPage=yes
+#if ReleaseChannel == "oss"
+; OSS builds are distributed as a normal machine-wide installer. Requiring
+; elevation keeps upgrades in the same install scope as existing HKLM/App Paths
+; installs instead of silently landing in a different per-user context.
+PrivilegesRequired=admin
+#else
 ; The following line defaults the installer to use non administrative install mode (install for current user only).
 PrivilegesRequired=lowest
 ; Allow the user to choose administrative install mode (install for all users).
 PrivilegesRequiredOverridesAllowed=dialog
+#endif
 OutputBaseFilename={#OutputName}
 Compression=lzma
 SolidCompression=yes
@@ -146,7 +153,11 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFile
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; AppUserModelID: "dev.warp.{#MyAppName}"; Tasks: desktopicon
 
 [Run]
+#if ReleaseChannel == "oss"
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: postinstall nowait skipifsilent unchecked
+#else
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: postinstall runhidden nowait
+#endif
 
 [Code]
 function IsNotStable(): Boolean;

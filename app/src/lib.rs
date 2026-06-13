@@ -1955,6 +1955,8 @@ pub(crate) fn initialize_app(
     // AIDocumentModel subscribes to UpdateManager so that it can be notified when notebooks are created on the server.
     #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(AIDocumentModel::new);
+    #[cfg(feature = "oss_slim")]
+    ctx.add_singleton_model(AIDocumentModel::new_for_oss_slim);
 
     // AgentConversationsModel subscribes to UpdateManager for RTC task updates.
     ctx.add_singleton_model(AgentConversationsModel::new);

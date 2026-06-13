@@ -224,8 +224,8 @@ impl AIDocumentModel {
         }
     }
 
-    #[cfg(test)]
-    pub fn new_for_test() -> Self {
+    #[cfg(any(test, feature = "oss_slim"))]
+    fn new_local_only() -> Self {
         let (save_tx, _save_rx) = async_channel::unbounded();
         Self {
             documents: HashMap::new(),
@@ -237,6 +237,16 @@ impl AIDocumentModel {
             streaming_create_documents: HashMap::new(),
             dirty_orchestration_events: HashMap::new(),
         }
+    }
+
+    #[cfg(feature = "oss_slim")]
+    pub fn new_for_oss_slim(_: &mut ModelContext<Self>) -> Self {
+        Self::new_local_only()
+    }
+
+    #[cfg(test)]
+    pub fn new_for_test() -> Self {
+        Self::new_local_only()
     }
 
     /// Sends a request to create a new cloud notebook with the document's contents.

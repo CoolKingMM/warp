@@ -184,11 +184,13 @@ impl AgentMessageBar {
             }
         });
 
-        ctx.subscribe_to_model(&AIDocumentModel::handle(ctx), |_, _, event, ctx| {
-            if matches!(event, AIDocumentModelEvent::DocumentVisibilityChanged(_)) {
-                ctx.notify();
-            }
-        });
+        if !cfg!(feature = "oss_slim") {
+            ctx.subscribe_to_model(&AIDocumentModel::handle(ctx), |_, _, event, ctx| {
+                if matches!(event, AIDocumentModelEvent::DocumentVisibilityChanged(_)) {
+                    ctx.notify();
+                }
+            });
+        }
 
         ctx.subscribe_to_model(&context_model, |me, _, event, ctx| {
             if let BlocklistAIContextEvent::UpdatedPendingContext { .. } = event {
@@ -607,9 +609,13 @@ impl MessageProvider<AgentMessageArgs<'_>> for ZeroStateMessageProducer {
             );
         }
 
-        let plan_count = AIDocumentModel::as_ref(app)
-            .get_all_documents_for_conversation(active_conversation.id())
-            .len();
+        let plan_count = if cfg!(feature = "oss_slim") {
+            0
+        } else {
+            AIDocumentModel::as_ref(app)
+                .get_all_documents_for_conversation(active_conversation.id())
+                .len()
+        };
         let has_plan = plan_count > 0;
         let has_conversation_been_updated_since_agent_view_entry =
             *original_conversation_length != active_conversation.exchange_count();

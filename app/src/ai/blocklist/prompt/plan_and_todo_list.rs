@@ -78,20 +78,22 @@ impl PlanAndTodoListView {
             }
         });
 
-        ctx.subscribe_to_model(
-            &AIDocumentModel::handle(ctx),
-            |me, _, event, ctx| match event {
-                AIDocumentModelEvent::DocumentUserEditStatusUpdated { document_id, .. } => {
-                    if me.ai_document_id(ctx).is_some_and(|id| id == *document_id) {
-                        ctx.notify();
+        if !cfg!(feature = "oss_slim") {
+            ctx.subscribe_to_model(
+                &AIDocumentModel::handle(ctx),
+                |me, _, event, ctx| match event {
+                    AIDocumentModelEvent::DocumentUserEditStatusUpdated { document_id, .. } => {
+                        if me.ai_document_id(ctx).is_some_and(|id| id == *document_id) {
+                            ctx.notify();
+                        }
                     }
-                }
-                AIDocumentModelEvent::DocumentSaveStatusUpdated { .. }
-                | AIDocumentModelEvent::DocumentUpdated { .. }
-                | AIDocumentModelEvent::StreamingDocumentsCleared(..)
-                | AIDocumentModelEvent::DocumentVisibilityChanged(_) => {}
-            },
-        );
+                    AIDocumentModelEvent::DocumentSaveStatusUpdated { .. }
+                    | AIDocumentModelEvent::DocumentUpdated { .. }
+                    | AIDocumentModelEvent::StreamingDocumentsCleared(..)
+                    | AIDocumentModelEvent::DocumentVisibilityChanged(_) => {}
+                },
+            );
+        }
 
         ctx.subscribe_to_model(
             &BlocklistAIHistoryModel::handle(ctx),
@@ -330,6 +332,10 @@ impl PlanAndTodoListView {
     }
 
     fn ai_document_id(&self, app: &AppContext) -> Option<AIDocumentId> {
+        if cfg!(feature = "oss_slim") {
+            return None;
+        }
+
         self.context_model
             .as_ref(app)
             .selected_conversation_id(app)

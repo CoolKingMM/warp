@@ -279,8 +279,10 @@ pub enum ActivationReason {
 #[derive(Debug, Clone)]
 pub enum PaneGroupAction {
     Add(Direction),
+    AddProjectTerminal,
     Remove(PaneId),
     RemoveActive,
+    CloseProjectTerminal,
     Activate(PaneId, ActivationReason),
     ResizeMove(Vector2F),
     StartResizing(DraggedBorder),
@@ -352,6 +354,22 @@ pub fn init(app: &mut AppContext) {
         )
         .with_custom_action(CustomAction::CloseCurrentSession)
         .with_context_predicate(id!("PaneGroup")),
+        EditableBinding::new(
+            "pane_group:add_project_terminal",
+            "New project terminal",
+            PaneGroupAction::AddProjectTerminal,
+        )
+        .with_context_predicate(id!("PaneGroup") & !id!("PaneGroup_PaneDragging"))
+        .with_linux_or_windows_key_binding("alt-`")
+        .with_enabled(|| cfg!(feature = "oss_slim") && ContextFlag::CreateNewSession.is_enabled()),
+        EditableBinding::new(
+            "pane_group:close_project_terminal",
+            "Close project terminal",
+            PaneGroupAction::CloseProjectTerminal,
+        )
+        .with_context_predicate(id!("PaneGroup") & !id!("PaneGroup_PaneDragging"))
+        .with_linux_or_windows_key_binding("alt-end")
+        .with_enabled(|| cfg!(feature = "oss_slim")),
         EditableBinding::new(
             "pane_group:add_left",
             "Split pane left",
@@ -6633,6 +6651,48 @@ impl PaneGroup {
         focused
     }
 
+    fn add_project_terminal(&mut self, ctx: &mut ViewContext<Self>) {
+        if !cfg!(feature = "oss_slim") {
+            return;
+        }
+
+        let chosen_shell = {
+            if let Some(model) = self.active_session_terminal_model(ctx) {
+                let model = model.lock();
+                model.shell_launch_state().available_shell()
+            } else {
+                None
+            }
+        };
+        self.add_terminal_pane(Direction::Right, chosen_shell, ctx);
+    }
+
+    fn close_project_terminal(&mut self, ctx: &mut ViewContext<Self>) {
+        if !cfg!(feature = "oss_slim") {
+            return;
+        }
+
+        let terminal_pane_ids = self.visible_terminal_pane_ids(ctx);
+        if terminal_pane_ids.len() <= 1 {
+            return;
+        }
+
+        let target_pane_id = self
+            .active_session_id(ctx)
+            .map(Into::into)
+            .filter(|pane_id| terminal_pane_ids.contains(pane_id))
+            .or_else(|| {
+                let focused_pane_id = self.focused_pane_id(ctx);
+                terminal_pane_ids
+                    .contains(&focused_pane_id)
+                    .then_some(focused_pane_id)
+            });
+
+        if let Some(pane_id) = target_pane_id {
+            self.close_pane_with_confirmation(pane_id, ctx);
+        }
+    }
+
     fn focus_adjacent_terminal_pane(
         &mut self,
         forward: bool,
@@ -7897,8 +7957,10 @@ impl TypedActionView for PaneGroup {
                 };
                 self.add_terminal_pane(*direction, chosen_shell, ctx);
             }
+            AddProjectTerminal => self.add_project_terminal(ctx),
             Remove(view_id) => self.close_pane_with_confirmation(*view_id, ctx),
             RemoveActive => self.close_active_pane_with_confirmation(ctx),
+            CloseProjectTerminal => self.close_project_terminal(ctx),
             Activate(view_id, reason) => self.focus_pane_on_mouse_event(*view_id, *reason, ctx),
             ResizeMove(position) => self.maybe_resize_pane(*position, ctx),
             StartResizing(border) => self.start_resizing(*border, ctx),

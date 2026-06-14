@@ -17627,7 +17627,8 @@ impl TerminalView {
                 .into_item(),
         );
 
-        if FeatureFlag::CreatingSharedSessions.is_enabled()
+        if !cfg!(feature = "oss_slim")
+            && FeatureFlag::CreatingSharedSessions.is_enabled()
             && ContextFlag::CreateSharedSession.is_enabled()
         {
             items.extend(self.session_sharing_context_menu_items(&model, false));
@@ -17674,7 +17675,10 @@ impl TerminalView {
         }
 
         // Section 3: Teams related
-        if !all_current_input_text.is_empty() && WarpDriveSettings::is_warp_drive_enabled(ctx) {
+        if !cfg!(feature = "oss_slim")
+            && !all_current_input_text.is_empty()
+            && WarpDriveSettings::is_warp_drive_enabled(ctx)
+        {
             items.extend([
                 MenuItem::Separator,
                 MenuItemFields::new("Save as workflow")
@@ -17688,14 +17692,14 @@ impl TerminalView {
         // Section 4: input hint text toggle
         if !is_editor_disabled {
             let input_settings = InputSettings::as_ref(ctx);
-            let inverse_action = if *input_settings.show_hint_text {
-                "Hide"
+            let input_hint_text_label = if *input_settings.show_hint_text {
+                "隐藏输入提示文字"
             } else {
-                "Show"
+                "显示输入提示文字"
             };
             items.push(MenuItem::Separator);
             items.push(
-                MenuItemFields::new(format!("{inverse_action} input hint text"))
+                MenuItemFields::new(input_hint_text_label)
                     .with_on_select_action(TerminalAction::InputContextMenuItem(
                         InputContextMenuAction::ToggleInputHintText,
                     ))

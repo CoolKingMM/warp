@@ -20,6 +20,7 @@ use warpui::elements::{
 };
 use warpui::fonts::{FamilyId, Properties};
 use warpui::keymap::FixedBinding;
+use warpui::localization::localize_string;
 use warpui::platform::Cursor;
 use warpui::text_layout::ClipConfig;
 use warpui::ui_components::components::UiComponent;
@@ -272,7 +273,8 @@ impl MenuItemLabel {
     ) -> Box<dyn Element> {
         match self {
             Self::Text(label) => {
-                let mut text = Text::new_inline(label.clone(), font_family, font_size)
+                let mut text =
+                    Text::new_inline(localize_string(label.clone()), font_family, font_size)
                     .with_color(primary_color.into())
                     .autosize_text(MINIMUM_MENU_ITEM_FONT_SIZE);
                 if let Some(config) = clip_config {
@@ -312,7 +314,11 @@ impl MenuItemLabel {
                 row.add_child(
                     Shrinkable::new(
                         1.,
-                        Text::new_inline(primary_text.clone(), font_family, font_size)
+                        Text::new_inline(
+                            localize_string(primary_text.clone()),
+                            font_family,
+                            font_size,
+                        )
                             .with_color(primary_color.into())
                             .autosize_text(MINIMUM_MENU_ITEM_FONT_SIZE)
                             .finish(),
@@ -322,7 +328,7 @@ impl MenuItemLabel {
                 row.add_child(
                     Container::new(
                         Text::new_inline(
-                            secondary_text.clone(),
+                            localize_string(secondary_text.clone()),
                             font_family,
                             font_size * SECONDARY_TEXT_RATIO,
                         )
@@ -348,7 +354,11 @@ impl MenuItemLabel {
 
                 // Add primary text
                 column.add_child(
-                    Text::new_inline(primary_text.clone(), font_family, font_size)
+                    Text::new_inline(
+                        localize_string(primary_text.clone()),
+                        font_family,
+                        font_size,
+                    )
                         .with_color(primary_color.into())
                         .autosize_text(MINIMUM_MENU_ITEM_FONT_SIZE)
                         .finish(),
@@ -358,7 +368,7 @@ impl MenuItemLabel {
                 column.add_child(
                     Container::new(
                         Text::new_inline(
-                            secondary_text.clone(),
+                            localize_string(secondary_text.clone()),
                             font_family,
                             font_size * SECONDARY_TEXT_RATIO,
                         )

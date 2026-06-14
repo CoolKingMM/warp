@@ -5,8 +5,9 @@ use warpui::{AppContext, SingletonEntity};
 use crate::auth::AuthStateProvider;
 use crate::features::FeatureFlag;
 use crate::settings::AISettings;
-use crate::ui_components::icons::Icon;
 use crate::tab::uses_vertical_tabs;
+use crate::ui_components::icons::Icon;
+use crate::workspace::tab_settings::TabSettings;
 
 /// A configurable item in the vertical tabs header toolbar.
 ///

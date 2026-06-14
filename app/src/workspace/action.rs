@@ -129,6 +129,7 @@ pub enum WorkspaceAction {
     ActivateNextTab,
     ActivateLastTab,
     ActivateMostRecentTab,
+    FocusTerminalPaneInProject(PaneViewLocator),
     FocusPrevTerminalInProject,
     FocusNextTerminalInProject,
     CyclePrevSession,
@@ -838,6 +839,7 @@ impl WorkspaceAction {
             | ActivateNextTab
             | ActivateLastTab
             | ActivateMostRecentTab
+            | FocusTerminalPaneInProject(_)
             | FocusPrevTerminalInProject
             | FocusNextTerminalInProject
             | CyclePrevSession

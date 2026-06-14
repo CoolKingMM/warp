@@ -6393,6 +6393,9 @@ impl PaneGroup {
         let new_pane_id = pane_data.terminal_pane_id();
 
         let _ = self.add_pane(direction, base_pane_id, Box::new(pane_data), true, ctx);
+        if cfg!(feature = "oss_slim") {
+            self.focus_terminal_pane_as_single(new_pane_id.into(), ctx);
+        }
 
         // Enter agent view if default session mode is Agent and AI is enabled
         if should_immediately_enter_agent_view {
@@ -6609,6 +6612,27 @@ impl PaneGroup {
         self.focus_adjacent_terminal_pane(false, ctx)
     }
 
+    pub fn focus_terminal_pane_as_single(
+        &mut self,
+        pane_id: PaneId,
+        ctx: &mut ViewContext<Self>,
+    ) -> bool {
+        let pane_ids = self.visible_terminal_pane_ids(ctx);
+        if pane_ids.len() <= 1 || !pane_ids.contains(&pane_id) {
+            return false;
+        }
+
+        let focused = self.focused_pane_id(ctx) == pane_id || self.focus_pane(pane_id, true, ctx);
+        if focused {
+            self.focus_state.update(ctx, |focus_state, ctx| {
+                focus_state.set_focused_pane_maximized(true, ctx);
+            });
+            ctx.notify();
+            ctx.emit(Event::MaximizePaneToggled);
+        }
+        focused
+    }
+
     fn focus_adjacent_terminal_pane(
         &mut self,
         forward: bool,
@@ -6636,7 +6660,7 @@ impl PaneGroup {
             current_index - 1
         };
 
-        self.focus_pane(pane_ids[target_index], true, ctx)
+        self.focus_terminal_pane_as_single(pane_ids[target_index], ctx)
     }
 
     /// Returns the count of visible panes (excluding hidden panes).

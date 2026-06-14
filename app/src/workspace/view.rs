@@ -4735,6 +4735,20 @@ impl Workspace {
         })
     }
 
+    fn focus_terminal_pane_in_project(
+        &mut self,
+        locator: PaneViewLocator,
+        ctx: &mut ViewContext<Self>,
+    ) -> bool {
+        let handle = self.active_tab_pane_group().clone();
+        if handle.id() != locator.pane_group_id {
+            return false;
+        }
+        handle.update(ctx, |pane_group, ctx| {
+            pane_group.focus_terminal_pane_as_single(locator.pane_id, ctx)
+        })
+    }
+
     fn focus_first_visible_pane_in_group(&mut self, ctx: &mut ViewContext<Self>) -> bool {
         let handle = self.active_tab_pane_group().clone();
         handle.update(ctx, |pane_group, ctx| pane_group.focus_first_pane(ctx))
@@ -21180,7 +21194,9 @@ impl Workspace {
                     .finish()
             })
             .with_cursor(Cursor::PointingHand)
-            .on_click(move |ctx, _, _| ctx.dispatch_typed_action(WorkspaceAction::FocusPane(locator)))
+            .on_click(move |ctx, _, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::FocusTerminalPaneInProject(locator))
+            })
             .finish();
 
             rail.add_child(Container::new(item).with_margin_bottom(2.).finish());
@@ -22981,6 +22997,9 @@ impl TypedActionView for Workspace {
             ActivateNextTab => self.activate_next_tab(ctx),
             ActivateLastTab => self.activate_last_tab(ctx),
             ActivateMostRecentTab => self.activate_most_recent_tab(ctx),
+            FocusTerminalPaneInProject(locator) => {
+                self.focus_terminal_pane_in_project(*locator, ctx);
+            }
             FocusPrevTerminalInProject => {
                 self.focus_prev_terminal_in_project(ctx);
             }

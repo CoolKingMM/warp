@@ -17882,6 +17882,19 @@ impl TerminalView {
     }
 
     fn alt_screen_context_menu(&mut self, position: Vector2F, ctx: &mut ViewContext<Self>) {
+        {
+            let semantic_selection = SemanticSelection::as_ref(ctx);
+            let model = self.model.lock();
+            if model
+                .selection_to_string(semantic_selection, self.is_inverted_blocklist(ctx), ctx)
+                .is_some()
+            {
+                drop(model);
+                self.context_menu_copy_selected_text(ctx);
+                return;
+            }
+        }
+
         let menu_items = self.rebuild_alt_screen_context_menu_items(ctx);
         self.show_context_menu(
             ContextMenuState {
@@ -17932,7 +17945,10 @@ impl TerminalView {
             }
 
             BlockListMenuSource::RegularTextRightClick { .. }
-            | BlockListMenuSource::RichContentTextRightClick { .. } => {}
+            | BlockListMenuSource::RichContentTextRightClick { .. } => {
+                self.context_menu_copy_selected_text(ctx);
+                return;
+            }
         }
 
         let items = self.context_menu_items(menu_source, ctx);

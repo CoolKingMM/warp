@@ -7972,8 +7972,13 @@ impl View for PaneGroup {
             column.add_child(ChildView::new(&self.user_default_shell_changed_banner).finish());
         }
 
-        let main_content = if self.is_focused_pane_maximized(app) {
-            self.focused_pane_id(app).render(app)
+        let focused_pane_id = self.focused_pane_id(app);
+        let show_single_project_terminal = cfg!(feature = "oss_slim")
+            && focused_pane_id.is_terminal_pane()
+            && self.visible_terminal_pane_ids(app).len() > 1;
+
+        let main_content = if self.is_focused_pane_maximized(app) || show_single_project_terminal {
+            focused_pane_id.render(app)
         } else {
             EventHandler::new(self.panes.render(appearance.theme(), app))
                 .on_mouse_dragged(move |ctx, _, position| {

@@ -21157,7 +21157,7 @@ impl Workspace {
                 let mut container = Container::new(
                     Align::new(
                         Text::new_inline(label.clone(), ui_font_family.clone(), 12.)
-                            .with_color(text_color)
+                            .with_color(text_color.into())
                             .with_style(Properties {
                                 weight: Weight::Semibold,
                                 ..Default::default()

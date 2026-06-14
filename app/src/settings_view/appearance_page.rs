@@ -117,10 +117,11 @@ const MIN_NEW_WINDOW_ROWS_OR_COLS: u16 = 5;
 const MAX_NEW_WINDOW_ROWS_OR_COLS: u16 = 2000;
 
 fn default_font_label(is_ai_font: bool) -> String {
+    let default_label = warpui::localization::localize_str("default");
     if is_ai_font {
-        format!("{} (default)", AIFontName::default_value())
+        format!("{} ({default_label})", AIFontName::default_value())
     } else {
-        format!("{} (default)", MonospaceFontName::default_value())
+        format!("{} ({default_label})", MonospaceFontName::default_value())
     }
 }
 
@@ -3156,7 +3157,10 @@ impl SettingsWidget for WindowOpacityWidget {
 
         let opacity_value = *window_settings.background_opacity;
         let mut col = Flex::column().with_child(render_body_item::<AppearancePageAction>(
-            format!("Window Opacity: {opacity_value}"),
+            format!(
+                "{}{opacity_value}",
+                warpui::localization::localize_str("Window Opacity: ")
+            ),
             // TODO(CORE-3384) add AdditionalInfo here.
             None,
             LocalOnlyIconState::for_setting(
@@ -3261,7 +3265,10 @@ impl SettingsWidget for WindowBlurWidget {
 
         Flex::column()
             .with_child(render_body_item::<AppearancePageAction>(
-                format!("Window Blur Radius: {blur_value}"),
+                format!(
+                    "{}{blur_value}",
+                    warpui::localization::localize_str("Window Blur Radius: ")
+                ),
                 Some(label_info),
                 LocalOnlyIconState::for_setting(
                     BackgroundBlurRadius::storage_key(),

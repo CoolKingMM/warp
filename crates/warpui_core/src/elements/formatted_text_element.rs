@@ -266,7 +266,9 @@ impl FormattedTextElement {
     ) -> Self {
         Self::internal_constructor(
             Arc::new(FormattedText::new([FormattedTextLine::Line(vec![
-                FormattedTextFragment::plain_text(text.into()),
+                FormattedTextFragment::plain_text(crate::localization::localize_cow(
+                    text.into(),
+                )),
             ])])),
             font_size,
             family_id,

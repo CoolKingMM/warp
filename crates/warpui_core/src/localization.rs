@@ -848,6 +848,219 @@ fn zh_cn(text: &str) -> Option<&'static str> {
             "查看你的 Agent 任务以及所有共享团队任务"
         },
         "Zoom" => "缩放",
+        "Add your own custom keybindings to existing actions below." => {
+            "在下方为现有操作添加自定义快捷键。"
+        },
+        "Adds an IDE-style project explorer / file tree to the left side tools panel." => {
+            "在左侧工具面板中添加 IDE 风格的项目资源管理器 / 文件树。"
+        },
+        "Adds global file search to the left side tools panel." => {
+            "在左侧工具面板中添加全局文件搜索。"
+        },
+        "Adjusts the default zoom level across all windows" => {
+            "调整所有窗口的默认缩放级别"
+        },
+        "Agent font" => "Agent 字体",
+        "Always" => "始终",
+        "Always show tab bar" => "始终显示标签栏",
+        "Automatically switch between light and dark themes when your system does." => {
+            "当系统切换浅色/深色模式时自动切换主题。"
+        },
+        "Available" => "可用",
+        "Available for download" => "可下载",
+        "Auto open code review panel" => "自动打开代码审查面板",
+        "Bar" => "竖线",
+        "Blinking cursor" => "光标闪烁",
+        "Block" => "块状",
+        "Blocks" => "块",
+        "Busy" => "忙碌",
+        "Changing the app icon requires the app to be bundled." => {
+            "更改应用图标需要应用已打包。"
+        },
+        "Checking..." => "正在检查...",
+        "Choose a layout to open files in Warp" => "选择在 Warp 中打开文件的布局",
+        "Choose an editor to open file links" => "选择用于打开文件链接的编辑器",
+        "Choose an editor to open files from the code review panel, project explorer, and global search" => {
+            "选择用于打开代码审查面板、项目资源管理器和全局搜索中文件的编辑器"
+        },
+        "Classic 1" => "经典 1",
+        "Classic 2" => "经典 2",
+        "Classic 3" => "经典 3",
+        "Clear" => "清除",
+        "Code Editor and Review" => "代码编辑器与审查",
+        "Codebase indexing" => "代码库索引",
+        "Codebase Indexing" => "代码库索引",
+        "Codebase too large" => "代码库过大",
+        "Columns" => "列",
+        "Compact mode" => "紧凑模式",
+        "Configure keyboard shortcuts" => "配置键盘快捷键",
+        "Copyright 2026 Warp" => "Copyright 2026 Warp",
+        "Create your own custom theme" => "创建自己的自定义主题",
+        "Current theme" => "当前主题",
+        "Cursor" => "光标",
+        "Cursor type" => "光标类型",
+        "Cursor type is disabled in Vim mode" => "Vim 模式下无法设置光标类型",
+        "Customize your app icon" => "自定义应用图标",
+        "Dark" => "深色",
+        "Default" => "默认",
+        "Default (no color)" => "默认（无颜色）",
+        "Default App" => "默认应用",
+        "Dim inactive panes" => "调暗非活动窗格",
+        "Disabled" => "已禁用",
+        "Discovered" => "已发现",
+        "Editor and Code Review" => "编辑器与代码审查",
+        "Enforce minimum contrast" => "强制最低对比度",
+        "Failed" => "失败",
+        "Fix with Oz" => "用 Oz 修复",
+        "Focus follows mouse" => "焦点跟随鼠标",
+        "Font size (px)" => "字体大小 (px)",
+        "Font weight" => "字体粗细",
+        "Full-screen Apps" => "全屏应用",
+        "Global file search" => "全局文件搜索",
+        "Glass Sky" => "玻璃天空",
+        "Glow" => "光晕",
+        "Group files into single editor pane" => "将文件合并到单个编辑器窗格",
+        "Header toolbar layout" => "顶部工具栏布局",
+        "Hide code review button in tab bar" => "在标签栏中隐藏代码审查按钮",
+        "Hide search bar in vertical tab layout" => "在垂直标签布局中隐藏搜索栏",
+        "Hide tab bar if fullscreen" => "全屏时隐藏标签栏",
+        "Icon" => "图标",
+        "Index limit reached" => "已达到索引数量上限",
+        "Index new folders by default" => "默认索引新文件夹",
+        "Indexing..." => "正在索引...",
+        "Initialization Settings" => "初始化设置",
+        "Initialized / indexed folders" => "已初始化 / 已索引文件夹",
+        "Input" => "输入",
+        "Input position" => "输入位置",
+        "Input type" => "输入类型",
+        "Keyboard shortcuts are not synced to the cloud" => "键盘快捷键不会同步到云端",
+        "Left" => "左侧",
+        "Ligatures may reduce performance" => "连字可能会降低性能",
+        "Light" => "浅色",
+        "Line height" => "行高",
+        "LSP SERVERS" => "LSP 服务器",
+        "Match terminal" => "匹配终端",
+        "Never" => "从不",
+        "No folders have been initialized yet." => "尚未初始化任何文件夹。",
+        "No index built" => "尚未构建索引",
+        "No index created" => "尚未创建索引",
+        "Not running" => "未运行",
+        "Notebook font size" => "Notebook 字体大小",
+        "On high-DPI displays" => "在高 DPI 显示器上",
+        "On low-DPI displays" => "在低 DPI 显示器上",
+        "Only for named colors" => "仅用于命名颜色",
+        "Only on hover" => "仅悬停时",
+        "Only show tab bar on hover" => "仅悬停时显示标签栏",
+        "Open Markdown files in Warp's Markdown Viewer by default" => {
+            "默认使用 Warp 的 Markdown 查看器打开 Markdown 文件"
+        },
+        "Open new windows with custom size" => "新窗口使用自定义大小",
+        "Open project rules" => "打开项目规则",
+        "Panes" => "窗格",
+        "Pin Input to the Bottom" => "将输入框固定到底部",
+        "Pin Input to the Top" => "将输入框固定到顶部",
+        "Pin to the bottom (Warp mode)" => "固定到底部（Warp 模式）",
+        "Pin to the top (Reverse mode)" => "固定到顶部（反向模式）",
+        "Preserve active tab color for new tabs" => "新标签页保留当前活动标签颜色",
+        "Project explorer" => "项目资源管理器",
+        "Reset to default" => "重置为默认值",
+        "Right" => "右侧",
+        "Rows" => "行",
+        "Shell (PS1)" => "Shell (PS1)",
+        "Show a button in the top right of the window to toggle the code review panel." => {
+            "在窗口右上角显示用于切换代码审查面板的按钮。"
+        },
+        "Show block dividers" => "显示块分隔线",
+        "Show code review button" => "显示代码审查按钮",
+        "Show code review button in tab bar" => "在标签栏中显示代码审查按钮",
+        "Show diff stats on code review button" => "在代码审查按钮上显示差异统计",
+        "Show Jump to Bottom of Block button" => "显示跳转到块底部按钮",
+        "Show ligatures in terminal" => "在终端中显示连字",
+        "Show lines added and removed counts on the code review button." => {
+            "在代码审查按钮上显示新增和删除行数。"
+        },
+        "Show tab indicators" => "显示标签页指示器",
+        "Show the latest user prompt instead of the generated conversation title for Oz and third-party agent sessions in vertical tabs." => {
+            "在垂直标签页中，对 Oz 和第三方 Agent 会话显示最新用户提示，而不是生成的对话标题。"
+        },
+        "Show the tab bar" => "显示标签栏",
+        "Show vertical tabs panel in restored windows" => "在恢复的窗口中显示垂直标签面板",
+        "Split Pane" => "拆分窗格",
+        "Stale" => "已过期",
+        "Start Input at the Top" => "从顶部开始输入",
+        "Start at the top (Classic mode)" => "从顶部开始（经典模式）",
+        "Stopped" => "已停止",
+        "Sync with OS" => "跟随系统",
+        "Syncing..." => "正在同步...",
+        "Tab close button position" => "标签关闭按钮位置",
+        "Tabs" => "标签页",
+        "Terminal font" => "终端字体",
+        "The selected graphics settings may not support rendering transparent windows." => {
+            "所选图形设置可能不支持渲染透明窗口。"
+        },
+        "The selected hardware may not support rendering transparent windows." => {
+            "所选硬件可能不支持渲染透明窗口。"
+        },
+        "Themes" => "主题",
+        "This setting is not synced to your other devices" => "此设置不会同步到你的其他设备",
+        "This shortcut conflicts with other keybinds" => "此快捷键与其他快捷键冲突",
+        "Toggle Input Mode (Warp/Classic)" => "切换输入模式（Warp/Classic）",
+        "to reference these keybindings in a side pane at anytime." => {
+            "随时在侧边窗格中查看这些快捷键。"
+        },
+        "Tools panel visibility is consistent across tabs" => "工具面板可见性在标签页之间保持一致",
+        "Transparency is not supported with your graphics drivers." => {
+            "你的图形驱动不支持透明效果。"
+        },
+        "Underline" => "下划线",
+        "Unavailable" => "不可用",
+        "Use" => "使用",
+        "Use custom padding in alt-screen" => "在 alt-screen 中使用自定义内边距",
+        "Use latest user prompt as conversation title in tab names" => {
+            "在标签名称中使用最新用户提示作为对话标题"
+        },
+        "Use thin strokes" => "使用细笔画",
+        "Use vertical tab layout" => "使用垂直标签布局",
+        "Use Window Blur (Acrylic texture)" => "使用窗口模糊（亚克力纹理）",
+        "View all available system fonts" => "查看所有可用系统字体",
+        "View logs" => "查看日志",
+        "AI Features must be enabled to use codebase indexing." => {
+            "必须启用 AI 功能才能使用代码库索引。"
+        },
+        "Team admins have disabled codebase indexing." => "团队管理员已禁用代码库索引。",
+        "Team admins have enabled codebase indexing." => "团队管理员已启用代码库索引。",
+        "To exclude specific files or directories from indexing, add them to the .warpindexingignore file in your repository directory. These files will still be accessible to AI features, but they won't be included in codebase embeddings." => {
+            "要从索引中排除特定文件或目录，请将它们添加到仓库目录中的 .warpindexingignore 文件。这些文件仍可供 AI 功能访问，但不会包含在代码库嵌入中。"
+        },
+        "Warp can automatically index code repositories as you navigate them, helping agents quickly understand context and provide solutions. Code is never stored on the server. If a codebase is unable to be indexed, Warp can still navigate your codebase and gain insights via grep and find tool calling." => {
+            "Warp 可以在你浏览代码仓库时自动建立索引，帮助 Agent 快速理解上下文并提供解决方案。代码绝不会存储在服务器上。如果某个代码库无法建立索引，Warp 仍可通过 grep 和 find 工具调用浏览代码库并获取信息。"
+        },
+        "When enabled, reopening or restoring a window opens the vertical tabs panel even if it was closed when the window was last saved." => {
+            "启用后，重新打开或恢复窗口时，即使上次保存窗口时垂直标签面板已关闭，也会打开它。"
+        },
+        "When set to true, Warp will automatically index code repositories as you navigate them - helping agents quickly understand context and provide targeted solutions." => {
+            "设为 true 时，Warp 会在你浏览代码仓库时自动建立索引，帮助 Agent 快速理解上下文并提供有针对性的解决方案。"
+        },
+        "When this setting is on, any files opened in the same tab will be automatically grouped into a single editor pane." => {
+            "启用后，在同一标签页中打开的文件会自动合并到单个编辑器窗格。"
+        },
+        "When this setting is on, the code review panel will open on the first accepted diff of a conversation" => {
+            "启用后，代码审查面板会在对话中首次接受差异时打开"
+        },
+        "When using the vertical tab layout, hide the search bar in the title bar. Search stays available via the command palette and keyboard shortcuts." => {
+            "使用垂直标签布局时，隐藏标题栏中的搜索栏。仍可通过命令面板和键盘快捷键进行搜索。"
+        },
+        "When windowed" => "窗口模式时",
+        "Window Blur Radius:" => "窗口模糊半径：",
+        "Window Blur Radius: " => "窗口模糊半径：",
+        "Window Opacity:" => "窗口不透明度：",
+        "Window Opacity: " => "窗口不透明度：",
+        "You have reached the maximum number of codebase indices for your plan. Delete existing indices to auto-index new codebases." => {
+            "你已达到当前套餐允许的代码库索引数量上限。请删除现有索引后再自动索引新的代码库。"
+        },
+        "You may need to restart Warp for MacOS to apply the preferred icon style." => {
+            "你可能需要重启 Warp for MacOS 才能应用首选图标样式。"
+        },
         _ => return None,
     })
 }

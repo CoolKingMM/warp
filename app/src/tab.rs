@@ -60,11 +60,12 @@ const TAB_INDICATOR_HEIGHT: f32 = 14.0;
 /// Label for the tab right-click menu's "Move to group" submenu parent.
 pub const MOVE_TO_GROUP_LABEL: &str = "Move to group";
 
-/// True when the user has opted into vertical tabs and the feature flag is on.
+/// True when vertical tabs should be used and the feature flag is on.
 /// Exposed so binding-description overrides in `workspace/mod.rs` and context-
 /// menu builders here can share a single predicate.
 pub fn uses_vertical_tabs(ctx: &AppContext) -> bool {
-    FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs
+    FeatureFlag::VerticalTabs.is_enabled()
+        && (cfg!(feature = "oss_slim") || *TabSettings::as_ref(ctx).use_vertical_tabs)
 }
 
 const WARP_2_TAB_COLOR_OPACITY: Opacity = 25;

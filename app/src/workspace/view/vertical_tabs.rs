@@ -1251,10 +1251,18 @@ fn vertical_tabs_tab_bar_location(insert_index: usize, tab_count: usize) -> TabB
     }
 }
 
+fn vertical_tabs_highlight_fill(theme: &WarpTheme) -> ThemeFill {
+    if cfg!(feature = "oss_slim") {
+        theme.surface_3()
+    } else {
+        ThemeFill::Solid(theme.accent().into())
+    }
+}
+
 fn render_vertical_tab_hover_indicator(theme: &WarpTheme) -> Box<dyn Element> {
     ConstrainedBox::new(
         Container::new(Empty::new().finish())
-            .with_background(ThemeFill::Solid(theme.accent().into()))
+            .with_background(vertical_tabs_highlight_fill(theme))
             .with_corner_radius(CornerRadius::with_all(Radius::Pixels(
                 GROUP_INSERTION_INDICATOR_HEIGHT / 2.,
             )))
@@ -2223,7 +2231,7 @@ fn render_tab_group_internal(
             let mut container = Container::new(group.finish()).with_background(background);
             if is_drag_target {
                 container = container.with_border(
-                    Border::all(1.).with_border_fill(ThemeFill::Solid(theme.accent().into())),
+                    Border::all(1.).with_border_fill(vertical_tabs_highlight_fill(theme)),
                 );
             } else if has_top_border || is_first_tab || is_last_tab {
                 container = container.with_border(
@@ -2262,7 +2270,7 @@ fn render_tab_group_internal(
             }
             if is_drag_target {
                 container = container.with_border(
-                    Border::all(1.).with_border_fill(ThemeFill::Solid(theme.accent().into())),
+                    Border::all(1.).with_border_fill(vertical_tabs_highlight_fill(theme)),
                 );
             }
             if needs_action_button_band {

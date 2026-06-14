@@ -556,6 +556,17 @@ pub fn init(app: &mut AppContext) {
         .with_group(bindings::BindingGroup::Navigation.as_str())
         .with_key_binding("cmdorctrl-9"),
         EditableBinding::new(
+            "workspace:activate_most_recent_tab",
+            "Switch to most recent tab",
+            WorkspaceAction::ActivateMostRecentTab,
+        )
+        .with_context_predicate(
+            id!("Workspace") & id!("Workspace_MultipleTabs") & !id!("Workspace_PaneDragging"),
+        )
+        .with_group(bindings::BindingGroup::Navigation.as_str())
+        .with_enabled(|| cfg!(feature = "oss_slim"))
+        .with_linux_or_windows_key_binding("alt-1"),
+        EditableBinding::new(
             "workspace:activate_prev_tab",
             "Activate previous tab",
             WorkspaceAction::ActivatePrevTab,

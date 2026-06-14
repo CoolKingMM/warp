@@ -570,6 +570,7 @@ fn zh_cn(text: &str) -> Option<&'static str> {
         "Switch to 7th tab" => "切换到第 7 个标签页",
         "Switch to 8th tab" => "切换到第 8 个标签页",
         "Switch to last tab" => "切换到最后一个标签页",
+        "Switch to most recent tab" => "切换到最近使用的标签页",
         "Tab" => "标签页",
         "Take control" => "接管控制",
         "Take over" => "接管",

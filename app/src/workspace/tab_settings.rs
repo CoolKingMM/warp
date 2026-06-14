@@ -255,6 +255,10 @@ pub enum HeaderToolbarChipSelection {
 impl HeaderToolbarChipSelection {
     pub fn left_items(&self) -> Vec<super::header_toolbar_item::HeaderToolbarItemKind> {
         use super::header_toolbar_item::HeaderToolbarItemKind;
+        if cfg!(feature = "oss_slim") {
+            return vec![HeaderToolbarItemKind::ToolsPanel, HeaderToolbarItemKind::TabsPanel];
+        }
+
         match self {
             Self::Default => HeaderToolbarItemKind::default_left(),
             Self::Custom { left, .. } => left.clone(),
@@ -263,6 +267,10 @@ impl HeaderToolbarChipSelection {
 
     pub fn right_items(&self) -> Vec<super::header_toolbar_item::HeaderToolbarItemKind> {
         use super::header_toolbar_item::HeaderToolbarItemKind;
+        if cfg!(feature = "oss_slim") {
+            return Vec::new();
+        }
+
         match self {
             Self::Default => HeaderToolbarItemKind::default_right(),
             Self::Custom { right, .. } => right.clone(),

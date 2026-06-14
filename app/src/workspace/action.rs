@@ -128,6 +128,7 @@ pub enum WorkspaceAction {
     ActivatePrevTab,
     ActivateNextTab,
     ActivateLastTab,
+    ActivateMostRecentTab,
     CyclePrevSession,
     CycleNextSession,
     MoveActiveTabLeft,
@@ -834,6 +835,7 @@ impl WorkspaceAction {
             | ActivatePrevTab
             | ActivateNextTab
             | ActivateLastTab
+            | ActivateMostRecentTab
             | CyclePrevSession
             | CycleNextSession
             | MoveActiveTabLeft

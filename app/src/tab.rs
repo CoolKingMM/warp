@@ -37,7 +37,7 @@ use crate::pane_group::{PaneGroup, PaneId};
 use crate::shell_indicator::ShellIndicatorType;
 use crate::terminal::shared_session::render_util::shared_session_indicator_color;
 use crate::terminal::view::TerminalViewState;
-use crate::themes::theme::{AnsiColorIdentifier, Fill as ThemeFill, VerticalGradient};
+use crate::themes::theme::{AnsiColorIdentifier, Fill as ThemeFill, VerticalGradient, WarpTheme};
 use crate::ui_components::buttons::icon_button;
 use crate::ui_components::color_dot::{render_color_dot, TAB_COLOR_OPTIONS};
 use crate::ui_components::icons::{Icon, ICON_DIMENSIONS};
@@ -237,7 +237,8 @@ impl TabData {
     ) -> Vec<MenuItem<WorkspaceAction>> {
         let mut menu_items = vec![];
 
-        if FeatureFlag::CreatingSharedSessions.is_enabled()
+        if !cfg!(feature = "oss_slim")
+            && FeatureFlag::CreatingSharedSessions.is_enabled()
             && ContextFlag::CreateSharedSession.is_enabled()
         {
             let shared_session_view_ids = self.pane_group.as_ref(ctx).shared_session_view_ids(ctx);
@@ -831,8 +832,20 @@ impl TabStyles {
             active: UiComponentStyles::default()
                 .set_font_color(theme.active_ui_text_color().into())
                 .set_font_weight(Weight::Medium)
-                .set_border_color(theme.accent().into()),
+                .set_border_color(default_active_tab_highlight(theme).into()),
         }
+    }
+}
+
+fn default_active_tab_highlight(theme: &WarpTheme) -> ThemeFill {
+    #[cfg(feature = "oss_slim")]
+    {
+        theme.surface_3()
+    }
+
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        internal_colors::fg_overlay_2(theme)
     }
 }
 
@@ -1438,7 +1451,7 @@ impl<'a> TabComponent<'a> {
                     }
                 }
             } else if is_active {
-                internal_colors::fg_overlay_2(theme).into()
+                default_active_tab_highlight(theme).into()
             } else if is_in_multi_tab_selection && is_hovered {
                 // Hovering a multi-selected tab steps one shade darker so the
                 // hover stays distinguishable from the in-selection highlight.
@@ -1450,7 +1463,7 @@ impl<'a> TabComponent<'a> {
             };
 
             let border = if is_active {
-                internal_colors::fg_overlay_2(theme)
+                default_active_tab_highlight(theme)
             } else {
                 internal_colors::fg_overlay_1(theme)
             };
@@ -1478,7 +1491,7 @@ impl<'a> TabComponent<'a> {
             };
 
             let border = if is_active || is_hovered {
-                internal_colors::fg_overlay_2(theme)
+                default_active_tab_highlight(theme)
             } else {
                 internal_colors::fg_overlay_1(theme)
             };

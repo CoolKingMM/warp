@@ -16897,14 +16897,6 @@ impl TerminalView {
                 let is_copy_both_disabled =
                     is_copy_commands_disabled && tail_block.output_to_string().trim().is_empty();
 
-                let share_block_label = if FeatureFlag::CreatingSharedSessions.is_enabled()
-                    && ContextFlag::CreateSharedSession.is_enabled()
-                {
-                    "Share block..."
-                } else {
-                    "Share..."
-                };
-
                 let mut items = vec![
                     MenuItemFields::new(copy_str)
                         .with_on_select_action(TerminalAction::ContextMenu(
@@ -16926,21 +16918,35 @@ impl TerminalView {
                         ))
                         .with_disabled(is_copy_commands_disabled)
                         .into_item(),
-                    MenuItemFields::new(share_block_label)
-                        .with_on_select_action(TerminalAction::ContextMenu(
-                            ContextMenuAction::OpenShareBlockModal {
-                                block_index: tail_block_index,
-                            },
-                        ))
-                        .with_key_shortcut_label(keybinding_name_to_display_string(
-                            "terminal:open_share_block_modal",
-                            ctx,
-                        ))
-                        .with_disabled(is_share_disabled)
-                        .into_item(),
                 ];
 
-                if FeatureFlag::CreatingSharedSessions.is_enabled()
+                if !cfg!(feature = "oss_slim") {
+                    let share_block_label = if FeatureFlag::CreatingSharedSessions.is_enabled()
+                        && ContextFlag::CreateSharedSession.is_enabled()
+                    {
+                        "Share block..."
+                    } else {
+                        "Share..."
+                    };
+
+                    items.push(
+                        MenuItemFields::new(share_block_label)
+                            .with_on_select_action(TerminalAction::ContextMenu(
+                                ContextMenuAction::OpenShareBlockModal {
+                                    block_index: tail_block_index,
+                                },
+                            ))
+                            .with_key_shortcut_label(keybinding_name_to_display_string(
+                                "terminal:open_share_block_modal",
+                                ctx,
+                            ))
+                            .with_disabled(is_share_disabled)
+                            .into_item(),
+                    );
+                }
+
+                if !cfg!(feature = "oss_slim")
+                    && FeatureFlag::CreatingSharedSessions.is_enabled()
                     && ContextFlag::CreateSharedSession.is_enabled()
                 {
                     // Sharing a session from a context menu is disabled for multi block selections, restored blocks, and viewers.
@@ -17151,7 +17157,8 @@ impl TerminalView {
                 // If selection is empty, only show non-block related options
                 let mut items = Vec::new();
 
-                if FeatureFlag::CreatingSharedSessions.is_enabled()
+                if !cfg!(feature = "oss_slim")
+                    && FeatureFlag::CreatingSharedSessions.is_enabled()
                     && ContextFlag::CreateSharedSession.is_enabled()
                 {
                     items.extend(self.session_sharing_context_menu_items(&model, false));

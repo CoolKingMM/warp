@@ -34,6 +34,8 @@ use crate::util::bindings::{
     filter_bindings_including_keystroke, reset_keybinding_to_default, set_custom_keybinding,
     CommandBinding,
 };
+#[cfg(feature = "oss_slim")]
+use crate::util::bindings::BindingGroup;
 use crate::{send_telemetry_from_ctx, themes, TelemetryEvent};
 
 const FONT_DELTA: f32 = 2.;
@@ -44,13 +46,13 @@ const ROW_LEFT_MARGIN: f32 = 20.0;
 const ROW_HEIGHT: f32 = 28.;
 const EDIT_BUTTONS_BORDER_RADIUS: f32 = 4.0;
 
-pub const SEARCH_PLACEHOLDER: &str = "Search by name or by keys (ex. \"cmd d\")";
-const SHORTCUT_CONFLICT_WARNING_TEXT: &str = "This shortcut conflicts with other keybinds";
+pub const SEARCH_PLACEHOLDER: &str = "按名称或按键搜索（例如 \"cmd d\"）";
+const SHORTCUT_CONFLICT_WARNING_TEXT: &str = "此快捷键与其他快捷键冲突";
 const KEYBINDINGS_PAGE_SHORTCUT: &str = "workspace:toggle_keybindings_page";
-const RESET_BUTTON_TEXT: &str = "Default";
-const CANCEL_BUTTON_TEXT: &str = "Cancel";
-const CLEAR_BUTTON_TEXT: &str = "Clear";
-const SAVE_BUTTON_TEXT: &str = "Save";
+const RESET_BUTTON_TEXT: &str = "默认";
+const CANCEL_BUTTON_TEXT: &str = "取消";
+const CLEAR_BUTTON_TEXT: &str = "清除";
+const SAVE_BUTTON_TEXT: &str = "保存";
 
 /// Notifier for custom keybinding changed. Views could subscribe to this for
 /// KeybindingChangedEvent.
@@ -447,7 +449,7 @@ impl KeybindingRow {
                         )
                         .finish()
                     } else {
-                        render_button("Cancel", appearance, cancel_button_color)
+                        render_button(CANCEL_BUTTON_TEXT, appearance, cancel_button_color)
                     }
                 },
             )
@@ -756,6 +758,7 @@ impl SettingsPageMeta for KeybindingsView {
             lenses
                 .into_iter()
                 .map(|lens| CommandBinding::from_editable_lens(lens, ctx))
+                .filter(is_visible_keybinding)
                 .sorted_by(|a, b| {
                     // Sort by description then name so that we can deduplicate bindings by name.
                     a.description
@@ -825,6 +828,94 @@ impl SettingsPageMeta for KeybindingsView {
     fn clear_highlighted_widget(&mut self) {
         self.page.clear_highlighted_widget();
     }
+}
+
+fn is_visible_keybinding(binding: &CommandBinding) -> bool {
+    is_visible_in_oss_slim(binding)
+}
+
+#[cfg(not(feature = "oss_slim"))]
+fn is_visible_in_oss_slim(_binding: &CommandBinding) -> bool {
+    true
+}
+
+#[cfg(feature = "oss_slim")]
+fn is_visible_in_oss_slim(binding: &CommandBinding) -> bool {
+    if matches!(
+        binding.group,
+        Some(
+            BindingGroup::WarpAi
+                | BindingGroup::Workflow
+                | BindingGroup::Notebooks
+                | BindingGroup::Notifications
+                | BindingGroup::EnvVarCollection
+        )
+    ) {
+        return false;
+    }
+
+    const HIDDEN_BINDINGS: &[&str] = &[
+        "workspace:copy_access_token_to_clipboard",
+        "workspace:export_all_warp_drive_objects",
+        "workspace:import_to_personal_drive",
+        "workspace:import_to_team_drive",
+        "workspace:link_to_privacy_policy",
+        "workspace:link_to_slack",
+        "workspace:log_out",
+        "workspace:open_ai_fact_collection",
+        "workspace:open_mcp_servers",
+        "workspace:search_drive",
+        "workspace:send_feedback",
+        "workspace:show_ai_settings_page",
+        "workspace:show_invite_modal",
+        "workspace:show_settings_account_page",
+        "workspace:show_settings_billing_and_usage_page",
+        "workspace:show_settings_environments_page",
+        "workspace:show_settings_privacy_page",
+        "workspace:show_settings_referrals_page",
+        "workspace:show_settings_shared_blocks_page",
+        "workspace:show_settings_teams_page",
+        "workspace:show_settings_warpify_page",
+        "workspace:toggle_agent_management_view",
+        "workspace:toggle_ai_assistant",
+        "workspace:toggle_conversation_list_view",
+        "workspace:toggle_left_panel",
+        "workspace:toggle_notification_mailbox",
+        "workspace:toggle_right_panel",
+        "workspace:toggle_warp_drive",
+        "input:clear_and_reset_ai_context_menu_query",
+        "input:enable_auto_detection",
+        "input:insert_network_logging_workflow",
+        "input:start_new_agent_conversation",
+        "input:toggle_natural_language_command_search",
+        "input:toggle_workflows",
+        "terminal:agent_onboarding_flow_legacy_terminal",
+        "terminal:agent_onboarding_flow_modality_no_project",
+        "terminal:agent_onboarding_flow_modality_project",
+        "terminal:agent_onboarding_flow_modality_terminal",
+        "terminal:agent_onboarding_flow_universal_input_no_project",
+        "terminal:agent_onboarding_flow_universal_input_project",
+        "terminal:ask_ai_assistant",
+        "terminal:ask_ai_assistant_last_block",
+        "terminal:jump_to_latest_agent_message",
+        "terminal:load_agent_mode_conversation",
+        "terminal:open_share_block_modal",
+        "terminal:toggle_conversation_details_panel",
+        "terminal:toggle_teams_modal",
+    ];
+
+    const HIDDEN_PREFIXES: &[&str] = &[
+        "workspace:create_personal_ai_",
+        "workspace:create_personal_env_",
+        "workspace:create_personal_notebook",
+        "workspace:create_personal_workflow",
+        "workspace:create_team_",
+    ];
+
+    !HIDDEN_BINDINGS.contains(&binding.name.as_str())
+        && !HIDDEN_PREFIXES
+            .iter()
+            .any(|prefix| binding.name.starts_with(prefix))
 }
 
 impl From<ViewHandle<KeybindingsView>> for SettingsPageViewHandle {

@@ -1889,6 +1889,10 @@ impl TerminalView {
         model: &TerminalModel,
         is_share_session_disabled: bool,
     ) -> Vec<MenuItem<TerminalAction>> {
+        if cfg!(feature = "oss_slim") {
+            return Vec::new();
+        }
+
         let mut items = Vec::new();
 
         if !model.shared_session_status().is_sharer_or_viewer() {

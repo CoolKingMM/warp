@@ -679,7 +679,8 @@ impl BackingView for TerminalView {
                         .into_item(),
                 );
             }
-        } else if FeatureFlag::CreatingSharedSessions.is_enabled()
+        } else if !cfg!(feature = "oss_slim")
+            && FeatureFlag::CreatingSharedSessions.is_enabled()
             && ContextFlag::CreateSharedSession.is_enabled()
         {
             items.push(

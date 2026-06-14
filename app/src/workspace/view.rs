@@ -5847,7 +5847,16 @@ impl Workspace {
         }
 
         let mut new_left = left;
-        new_left.insert(0, HeaderToolbarItemKind::TabsPanel);
+        let insert_index = if cfg!(feature = "oss_slim") {
+            new_left
+                .iter()
+                .position(|item| *item == HeaderToolbarItemKind::ToolsPanel)
+                .map(|index| index + 1)
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        new_left.insert(insert_index, HeaderToolbarItemKind::TabsPanel);
         let selection = HeaderToolbarChipSelection::Custom {
             left: new_left,
             right,

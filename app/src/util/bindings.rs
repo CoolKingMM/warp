@@ -400,7 +400,9 @@ pub fn custom_tag_to_keystroke(custom: CustomTag) -> Option<Keystroke> {
             Keystroke::parse("ctrl-shift-space").ok()
         }
         CustomAction::ToggleProjectExplorer => {
-            if OperatingSystem::get().is_mac() {
+            if cfg!(feature = "oss_slim") {
+                None
+            } else if OperatingSystem::get().is_mac() {
                 Keystroke::parse("ctrl-1").ok()
             } else {
                 Keystroke::parse("alt-1").ok()

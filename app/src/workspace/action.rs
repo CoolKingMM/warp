@@ -129,6 +129,8 @@ pub enum WorkspaceAction {
     ActivateNextTab,
     ActivateLastTab,
     ActivateMostRecentTab,
+    FocusPrevTerminalInProject,
+    FocusNextTerminalInProject,
     CyclePrevSession,
     CycleNextSession,
     MoveActiveTabLeft,
@@ -836,6 +838,8 @@ impl WorkspaceAction {
             | ActivateNextTab
             | ActivateLastTab
             | ActivateMostRecentTab
+            | FocusPrevTerminalInProject
+            | FocusNextTerminalInProject
             | CyclePrevSession
             | CycleNextSession
             | MoveActiveTabLeft

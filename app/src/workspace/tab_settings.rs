@@ -256,7 +256,7 @@ impl HeaderToolbarChipSelection {
     pub fn left_items(&self) -> Vec<super::header_toolbar_item::HeaderToolbarItemKind> {
         use super::header_toolbar_item::HeaderToolbarItemKind;
         if cfg!(feature = "oss_slim") {
-            return vec![HeaderToolbarItemKind::ToolsPanel, HeaderToolbarItemKind::TabsPanel];
+            return vec![HeaderToolbarItemKind::ToolsPanel];
         }
 
         match self {
@@ -488,7 +488,7 @@ define_settings_group!(TabSettings, settings: [
     },
     use_vertical_tabs: UseVerticalTabs {
         type: bool,
-        default: cfg!(feature = "oss_slim"),
+        default: false,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,
@@ -497,7 +497,7 @@ define_settings_group!(TabSettings, settings: [
     },
     show_vertical_tab_panel_in_restored_windows: ShowVerticalTabPanelInRestoredWindows {
         type: bool,
-        default: cfg!(feature = "oss_slim"),
+        default: false,
         supported_platforms: SupportedPlatforms::ALL,
         sync_to_cloud: SyncToCloud::Globally(RespectUserSyncSetting::Yes),
         private: false,

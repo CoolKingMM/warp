@@ -6592,6 +6592,53 @@ impl PaneGroup {
         false
     }
 
+    pub fn visible_terminal_pane_ids(&self, ctx: &AppContext) -> Vec<PaneId> {
+        self.panes
+            .visible_pane_ids()
+            .into_iter()
+            .filter(|pane_id| pane_id.as_terminal_pane_id().is_some())
+            .filter(|pane_id| self.terminal_view_from_pane_id(*pane_id, ctx).is_some())
+            .collect()
+    }
+
+    pub fn focus_next_terminal_pane(&mut self, ctx: &mut ViewContext<Self>) -> bool {
+        self.focus_adjacent_terminal_pane(true, ctx)
+    }
+
+    pub fn focus_prev_terminal_pane(&mut self, ctx: &mut ViewContext<Self>) -> bool {
+        self.focus_adjacent_terminal_pane(false, ctx)
+    }
+
+    fn focus_adjacent_terminal_pane(
+        &mut self,
+        forward: bool,
+        ctx: &mut ViewContext<Self>,
+    ) -> bool {
+        let pane_ids = self.visible_terminal_pane_ids(ctx);
+        if pane_ids.len() <= 1 {
+            return false;
+        }
+
+        let active_pane_id = self
+            .active_session_id(ctx)
+            .map(Into::into)
+            .filter(|pane_id| pane_ids.contains(pane_id))
+            .unwrap_or_else(|| self.focused_pane_id(ctx));
+        let current_index = pane_ids
+            .iter()
+            .position(|pane_id| *pane_id == active_pane_id)
+            .unwrap_or(0);
+        let target_index = if forward {
+            (current_index + 1) % pane_ids.len()
+        } else if current_index == 0 {
+            pane_ids.len() - 1
+        } else {
+            current_index - 1
+        };
+
+        self.focus_pane(pane_ids[target_index], true, ctx)
+    }
+
     /// Returns the count of visible panes (excluding hidden panes).
     #[cfg(any(test, feature = "integration_tests"))]
     pub fn visible_pane_count(&self) -> usize {

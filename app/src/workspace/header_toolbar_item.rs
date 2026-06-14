@@ -106,7 +106,7 @@ impl HeaderToolbarItemKind {
 
     pub fn default_left() -> Vec<Self> {
         if cfg!(feature = "oss_slim") {
-            return vec![Self::ToolsPanel, Self::TabsPanel];
+            return vec![Self::ToolsPanel];
         }
 
         vec![Self::TabsPanel, Self::ToolsPanel, Self::AgentManagement]
@@ -123,7 +123,7 @@ impl HeaderToolbarItemKind {
     /// All toolbar item variants (availability filtering is done at the call site).
     pub fn all_items() -> Vec<Self> {
         if cfg!(feature = "oss_slim") {
-            return vec![Self::TabsPanel, Self::ToolsPanel];
+            return vec![Self::ToolsPanel];
         }
 
         vec![

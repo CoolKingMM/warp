@@ -64,8 +64,9 @@ pub const MOVE_TO_GROUP_LABEL: &str = "Move to group";
 /// Exposed so binding-description overrides in `workspace/mod.rs` and context-
 /// menu builders here can share a single predicate.
 pub fn uses_vertical_tabs(ctx: &AppContext) -> bool {
-    cfg!(feature = "oss_slim")
-        || (FeatureFlag::VerticalTabs.is_enabled() && *TabSettings::as_ref(ctx).use_vertical_tabs)
+    !cfg!(feature = "oss_slim")
+        && FeatureFlag::VerticalTabs.is_enabled()
+        && *TabSettings::as_ref(ctx).use_vertical_tabs
 }
 
 const WARP_2_TAB_COLOR_OPACITY: Opacity = 25;

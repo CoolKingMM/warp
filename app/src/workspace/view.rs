@@ -4721,6 +4721,20 @@ impl Workspace {
         handle.update(ctx, |pane_group, ctx| pane_group.try_navigate_prev(ctx))
     }
 
+    fn focus_next_terminal_in_project(&mut self, ctx: &mut ViewContext<Self>) -> bool {
+        let handle = self.active_tab_pane_group().clone();
+        handle.update(ctx, |pane_group, ctx| {
+            pane_group.focus_next_terminal_pane(ctx)
+        })
+    }
+
+    fn focus_prev_terminal_in_project(&mut self, ctx: &mut ViewContext<Self>) -> bool {
+        let handle = self.active_tab_pane_group().clone();
+        handle.update(ctx, |pane_group, ctx| {
+            pane_group.focus_prev_terminal_pane(ctx)
+        })
+    }
+
     fn focus_first_visible_pane_in_group(&mut self, ctx: &mut ViewContext<Self>) -> bool {
         let handle = self.active_tab_pane_group().clone();
         handle.update(ctx, |pane_group, ctx| pane_group.focus_first_pane(ctx))
@@ -20448,11 +20462,11 @@ impl Workspace {
         let mut tab_bar_container = Container::new(
             EventHandler::new(Clipped::new(self.render_tab_bar_hoverable(bar_contents)).finish())
                 .on_back_mouse_down(move |ctx, _app, _position| {
-                    ctx.dispatch_typed_action(WorkspaceAction::ActivatePrevTab);
+                    ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
                     DispatchEventResult::StopPropagation
                 })
                 .on_forward_mouse_down(move |ctx, _app, _position| {
-                    ctx.dispatch_typed_action(WorkspaceAction::ActivateNextTab);
+                    ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
                     DispatchEventResult::StopPropagation
                 })
                 .finish(),
@@ -21103,6 +21117,88 @@ impl Workspace {
         }
     }
 
+    fn render_terminal_switcher_rail(
+        &self,
+        app: &AppContext,
+        appearance: &Appearance,
+    ) -> Option<Box<dyn Element>> {
+        if !cfg!(feature = "oss_slim") {
+            return None;
+        }
+
+        let pane_group_handle = self.active_tab_pane_group();
+        let pane_group_id = pane_group_handle.id();
+        let pane_group = pane_group_handle.as_ref(app);
+        let terminal_pane_ids = pane_group.visible_terminal_pane_ids(app);
+        if terminal_pane_ids.len() <= 1 {
+            return None;
+        }
+
+        let theme = appearance.theme();
+        let active_pane_id = pane_group.active_session_id(app).map(Into::into);
+        let mut rail = Flex::column()
+            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+            .with_main_axis_size(MainAxisSize::Min);
+
+        for (index, pane_id) in terminal_pane_ids.into_iter().enumerate() {
+            let is_active = Some(pane_id) == active_pane_id;
+            let label = (index + 1).to_string();
+            let locator = PaneViewLocator {
+                pane_group_id,
+                pane_id,
+            };
+            let ui_font_family = appearance.ui_font_family();
+            let item = Hoverable::new(MouseStateHandle::default(), move |state| {
+                let text_color = if is_active {
+                    theme.active_ui_text_color()
+                } else {
+                    theme.sub_text_color(theme.background())
+                };
+                let mut container = Container::new(
+                    Align::new(
+                        Text::new_inline(label.clone(), ui_font_family.clone(), 12.)
+                            .with_color(text_color)
+                            .with_style(Properties {
+                                weight: Weight::Semibold,
+                                ..Default::default()
+                            })
+                            .finish(),
+                    )
+                    .finish(),
+                )
+                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(6.)));
+
+                if is_active {
+                    container = container.with_background(internal_colors::fg_overlay_3(theme));
+                } else if state.is_hovered() {
+                    container = container.with_background(internal_colors::fg_overlay_2(theme));
+                }
+
+                ConstrainedBox::new(container.finish())
+                    .with_width(22.)
+                    .with_height(22.)
+                    .finish()
+            })
+            .with_cursor(Cursor::PointingHand)
+            .on_click(move |ctx, _, _| ctx.dispatch_typed_action(WorkspaceAction::FocusPane(locator)))
+            .finish();
+
+            rail.add_child(Container::new(item).with_margin_bottom(2.).finish());
+        }
+
+        Some(
+            ConstrainedBox::new(
+                Container::new(rail.finish())
+                    .with_background(appearance.theme().surface_1().with_opacity(70))
+                    .with_horizontal_padding(3.)
+                    .with_vertical_padding(6.)
+                    .finish(),
+            )
+            .with_width(32.)
+            .finish(),
+        )
+    }
+
     fn render_banner_and_active_tab(
         &self,
         app: &AppContext,
@@ -21149,6 +21245,12 @@ impl Workspace {
                     app,
                 );
             }
+            Self::add_panel_with_separator(
+                &mut main_content,
+                &mut prev_panel_added,
+                self.render_terminal_switcher_rail(app, appearance),
+                app,
+            );
 
             if !is_right_maximized {
                 if prev_panel_added {
@@ -21196,11 +21298,11 @@ impl Workspace {
 
         let clickable_element = EventHandler::new(main_content.finish())
             .on_back_mouse_down(|ctx, _app, _position| {
-                ctx.dispatch_typed_action(WorkspaceAction::ActivatePrevTab);
+                ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
                 DispatchEventResult::StopPropagation
             })
             .on_forward_mouse_down(|ctx, _app, _position| {
-                ctx.dispatch_typed_action(WorkspaceAction::ActivateNextTab);
+                ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
                 DispatchEventResult::StopPropagation
             })
             .finish();
@@ -22879,6 +22981,12 @@ impl TypedActionView for Workspace {
             ActivateNextTab => self.activate_next_tab(ctx),
             ActivateLastTab => self.activate_last_tab(ctx),
             ActivateMostRecentTab => self.activate_most_recent_tab(ctx),
+            FocusPrevTerminalInProject => {
+                self.focus_prev_terminal_in_project(ctx);
+            }
+            FocusNextTerminalInProject => {
+                self.focus_next_terminal_in_project(ctx);
+            }
             CyclePrevSession => self.cycle_prev_session(ctx),
             CycleNextSession => self.cycle_next_session(ctx),
             MoveActiveTabLeft => self.move_tab(self.active_tab_index, TabMovement::Left, ctx),

@@ -2142,7 +2142,7 @@ impl ChildModels {
         &'a self,
         ctx: &'a AppContext,
     ) -> impl Iterator<Item = &'a T> + 'a {
-        self.model_handles().map(|handle| handle.as_ref(ctx))
+        self.model_handles::<T>().map(|handle| handle.as_ref(ctx))
     }
 
     /// Iterates over all child model handles of the given type.

@@ -600,11 +600,6 @@ lazy_static! {
     /// This is purely a heuristic and may be subject to change based on user reports.
     static ref TRIGGER_RC_FILE_SUBSHELL_BOOTSTRAP_DELAY: Duration = Duration::from_millis(100);
 
-    #[cfg(feature = "command_corrections")]
-    static ref DEFAULT_IGNORED_RULES_FOR_COMMAND_CORRECTIONS: [CommandCorrectionsRuleId; 1] = [
-        CommandCorrectionsHistoryRule.id()
-    ];
-
     /// A list of alt-screen apps that are known to cause problems when resizing
     /// during initialization.
     ///
@@ -616,6 +611,13 @@ lazy_static! {
     ///
     /// See [`TerminalView::resize_alt_screen_redundantly`] for more details.
     static ref ALT_SCREEN_APPS_THAT_MUST_MATCH_BLOCKLIST_PADDING: HashSet<&'static str> = HashSet::from(["k9s", "lazygit"]);
+}
+
+#[cfg(feature = "command_corrections")]
+lazy_static! {
+    static ref DEFAULT_IGNORED_RULES_FOR_COMMAND_CORRECTIONS: [CommandCorrectionsRuleId; 1] = [
+        CommandCorrectionsHistoryRule.id()
+    ];
 }
 
 pub const AI_CONTROL_PANEL_MARGIN: f32 = 10.;

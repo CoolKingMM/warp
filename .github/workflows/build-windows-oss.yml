@@ -8,8 +8,6 @@ on:
         required: false
         type: string
   push:
-    branches:
-      - master
     tags:
       - "v*"
 
@@ -17,7 +15,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-release
   cancel-in-progress: true
 
 env:

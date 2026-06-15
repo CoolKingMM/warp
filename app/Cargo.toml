@@ -326,10 +326,10 @@ tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
 
 # AWS SDK (loading credentials for BYO LLM)
-aws-config = { version = "1.8.16", features = ["credentials-login"] }
-aws-credential-types = "1"
-aws-sdk-sts = { version = "1", default-features = false, features = ["default-https-client", "rt-tokio"] }
-aws-types = "1"
+aws-config = { version = "1.8.16", features = ["credentials-login"], optional = true }
+aws-credential-types = { version = "1", optional = true }
+aws-sdk-sts = { version = "1", default-features = false, features = ["default-https-client", "rt-tokio"], optional = true }
+aws-types = { version = "1", optional = true }
 
 notify-debouncer-full.workspace = true
 rquickjs = { workspace = true, optional = true }
@@ -568,6 +568,7 @@ default = [
     "fallback_model_load_output_messaging",
     "api_key_authentication",
     "api_key_management",
+    "aws_bedrock_credentials",
     "summarization_cancellation_confirmation",
     "ui_zoom",
     "discard_per_file_and_all_changes",
@@ -916,6 +917,12 @@ file_tree = []
 code_launch_modal = []
 api_key_authentication = []
 api_key_management = []
+aws_bedrock_credentials = [
+    "dep:aws-config",
+    "dep:aws-credential-types",
+    "dep:aws-sdk-sts",
+    "dep:aws-types",
+]
 diff_set_as_context = []
 discard_per_file_and_all_changes = []
 ui_zoom = []

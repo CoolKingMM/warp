@@ -1,21 +1,39 @@
+#[cfg(feature = "aws_bedrock_credentials")]
 use std::time::{Duration, SystemTime};
 
 pub use ai::api_keys::AwsCredentials;
-use ai::api_keys::{ApiKeyManager, AwsCredentialsRefreshStrategy, AwsCredentialsState};
+use ai::api_keys::{ApiKeyManager, AwsCredentialsState};
+#[cfg(feature = "aws_bedrock_credentials")]
+use ai::api_keys::AwsCredentialsRefreshStrategy;
+#[cfg(feature = "aws_bedrock_credentials")]
 use anyhow::Context;
+#[cfg(feature = "aws_bedrock_credentials")]
 use aws_credential_types::provider::error::CredentialsError;
+#[cfg(feature = "aws_bedrock_credentials")]
 use aws_credential_types::provider::ProvideCredentials;
+#[cfg(feature = "aws_bedrock_credentials")]
 use futures::channel::oneshot::channel;
 use futures::future::BoxFuture;
+#[cfg(feature = "aws_bedrock_credentials")]
 use tokio::sync::Mutex;
+#[cfg(feature = "aws_bedrock_credentials")]
 use vec1::vec1;
+#[cfg(feature = "aws_bedrock_credentials")]
 use warp_managed_secrets::client::IdentityTokenOptions;
+#[cfg(feature = "aws_bedrock_credentials")]
 use warp_managed_secrets::ManagedSecretManager;
-use warpui::{ModelContext, ModelHandle, SingletonEntity};
+use warpui::{ModelContext, ModelHandle};
+#[cfg(feature = "aws_bedrock_credentials")]
+use warpui::SingletonEntity;
 
+#[cfg(feature = "aws_bedrock_credentials")]
 use crate::settings::{AISettings, AISettingsChangedEvent};
+#[cfg(feature = "aws_bedrock_credentials")]
 use crate::terminal::event::{AfterBlockCompletedEvent, BlockType, UserBlockCompleted};
-use crate::terminal::model_events::{ModelEvent, ModelEventDispatcher};
+#[cfg(feature = "aws_bedrock_credentials")]
+use crate::terminal::model_events::ModelEvent;
+use crate::terminal::model_events::ModelEventDispatcher;
+#[cfg(feature = "aws_bedrock_credentials")]
 use crate::workspaces::user_workspaces::{UserWorkspaces, UserWorkspacesEvent};
 
 /// Errors that can occur when loading AWS credentials.
@@ -42,6 +60,7 @@ impl std::fmt::Display for LoadAwsCredentialsError {
     }
 }
 
+#[cfg(feature = "aws_bedrock_credentials")]
 fn aws_profile_reference_for_message(profile: &str, capitalize_first_word: bool) -> String {
     let profile = profile.trim();
     if profile.is_empty() {
@@ -56,6 +75,7 @@ fn aws_profile_reference_for_message(profile: &str, capitalize_first_word: bool)
     }
 }
 
+#[cfg(feature = "aws_bedrock_credentials")]
 fn user_facing_aws_credentials_error_message(err: &CredentialsError, profile: &str) -> String {
     match err {
         CredentialsError::CredentialsNotLoaded(_) => format!(
@@ -84,7 +104,9 @@ fn user_facing_aws_credentials_error_message(err: &CredentialsError, profile: &s
 
 impl std::error::Error for LoadAwsCredentialsError {}
 
+#[cfg(feature = "aws_bedrock_credentials")]
 const AWS_BEDROCK_STS_AUDIENCE: &str = "sts.amazonaws.com";
+#[cfg(feature = "aws_bedrock_credentials")]
 const BEDROCK_IDENTITY_TOKEN_DURATION: Duration = Duration::from_secs(60 * 60);
 
 pub(crate) fn aws_role_session_name(run_id: &str) -> String {
@@ -97,8 +119,10 @@ pub(crate) fn aws_role_session_name(run_id: &str) -> String {
 /// `AssumeRoleWithWebIdentity` is unauthenticated (the web identity token is the
 /// credential), so we skip the default credentials chain via `no_credentials()`
 /// and reuse a single client across refreshes.
+#[cfg(feature = "aws_bedrock_credentials")]
 static STS_CLIENT_CACHE: Mutex<Option<(String, aws_sdk_sts::Client)>> = Mutex::const_new(None);
 
+#[cfg(feature = "aws_bedrock_credentials")]
 async fn sts_client(region: &str) -> aws_sdk_sts::Client {
     let mut cache = STS_CLIENT_CACHE.lock().await;
     if let Some((cached_region, client)) = cache.as_ref() {
@@ -117,6 +141,7 @@ async fn sts_client(region: &str) -> aws_sdk_sts::Client {
     client
 }
 
+#[cfg(feature = "aws_bedrock_credentials")]
 fn aws_credentials_state_for_error(err: LoadAwsCredentialsError) -> AwsCredentialsState {
     match err {
         LoadAwsCredentialsError::NotConfigured => AwsCredentialsState::Missing,
@@ -131,6 +156,7 @@ fn aws_credentials_state_for_error(err: LoadAwsCredentialsError) -> AwsCredentia
 /// # Arguments
 /// * `profile` - AWS profile name. If empty, uses the default AWS SDK behavior
 ///   (checks AWS_PROFILE env var, then uses "default").
+#[cfg(feature = "aws_bedrock_credentials")]
 pub async fn load_aws_credentials_from_sdk(
     profile: &str,
 ) -> Result<AwsCredentials, LoadAwsCredentialsError> {
@@ -186,6 +212,7 @@ pub trait AwsCredentialRefresher {
         Self: Sized;
 }
 
+#[cfg(feature = "aws_bedrock_credentials")]
 impl AwsCredentialRefresher for ApiKeyManager {
     fn register_model_event_dispatcher(
         &mut self,
@@ -233,11 +260,25 @@ impl AwsCredentialRefresher for ApiKeyManager {
         });
     }
 }
+
+#[cfg(not(feature = "aws_bedrock_credentials"))]
+impl AwsCredentialRefresher for ApiKeyManager {
+    fn register_model_event_dispatcher(
+        &mut self,
+        _model_events: &ModelHandle<ModelEventDispatcher>,
+        _ctx: &mut ModelContext<Self>,
+    ) {
+    }
+
+    fn subscribe_to_settings_changes(&mut self, _ctx: &mut ModelContext<Self>) {}
+}
+
 /// Refreshes AWS credentials, dispatching to the appropriate strategy.
 ///
 /// Returns a future that resolves when the refresh completes. Subscription-triggered
 /// callers that don't need to wait should drop the returned future — the underlying
 /// work has already been scheduled on the executor by the time this returns.
+#[cfg(feature = "aws_bedrock_credentials")]
 pub(crate) fn refresh_aws_credentials(
     manager: &mut ApiKeyManager,
     ctx: &mut ModelContext<ApiKeyManager>,
@@ -254,7 +295,17 @@ pub(crate) fn refresh_aws_credentials(
     }
 }
 
+#[cfg(not(feature = "aws_bedrock_credentials"))]
+pub(crate) fn refresh_aws_credentials(
+    manager: &mut ApiKeyManager,
+    ctx: &mut ModelContext<ApiKeyManager>,
+) -> BoxFuture<'static, Result<(), String>> {
+    manager.set_aws_credentials_state(AwsCredentialsState::Disabled, ctx);
+    Box::pin(async { Ok(()) })
+}
+
 /// Refreshes credentials from the local AWS SDK credential chain (~/.aws).
+#[cfg(feature = "aws_bedrock_credentials")]
 fn refresh_aws_credentials_local_chain(
     manager: &mut ApiKeyManager,
     ctx: &mut ModelContext<ApiKeyManager>,
@@ -300,6 +351,7 @@ fn refresh_aws_credentials_local_chain(
 }
 
 /// Refreshes credentials via OIDC identity token + STS AssumeRoleWithWebIdentity.
+#[cfg(feature = "aws_bedrock_credentials")]
 fn refresh_aws_credentials_oidc(
     task_id: Option<String>,
     role_arn: String,
@@ -410,6 +462,6 @@ fn refresh_aws_credentials_oidc(
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "aws_bedrock_credentials"))]
 #[path = "aws_credentials_tests.rs"]
 mod tests;

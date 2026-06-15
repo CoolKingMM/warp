@@ -3,6 +3,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use ai::skills::SkillReference;
+#[cfg(feature = "command_corrections")]
 use command_corrections::Correction;
 pub use onboarding::OnboardingIntention;
 use pathfinder_geometry::vector::Vector2F;
@@ -151,6 +152,7 @@ pub enum TerminalAction {
     AltSelect(SelectAction<Point>),
     MaybeClearAltSelect,
     AltMouseAction(MouseState),
+    #[cfg(feature = "command_corrections")]
     InsertCommandCorrection {
         correction: Correction,
     },
@@ -292,6 +294,7 @@ pub enum TerminalAction {
     /// Triggers the banner asking to Warpify the active ssh session. The String is the
     /// command that the user entered.
     ShowWarpifySshBanner(String, Option<String>),
+    #[cfg(feature = "command_corrections")]
     InsertMostRecentCommandCorrection,
     AliasExpansionBanner(AliasExpansionBannerAction),
     OpenInWarpBanner(OpenInWarpBannerAction),
@@ -597,6 +600,7 @@ impl fmt::Debug for TerminalAction {
             NotificationsErrorBanner(action) => write!(f, "NotificationsErrorBanner({action:?})"),
             LegacySSHBanner(action) => write!(f, "SSHBanner({action:?})"),
             JumpToBookmark(index) => write!(f, "JumpToBookmark({index:?})"),
+            #[cfg(feature = "command_corrections")]
             InsertCommandCorrection { .. } => {
                 write!(f, "InsertCommandCorrection",)
             }
@@ -626,6 +630,7 @@ impl fmt::Debug for TerminalAction {
             DismissWarpifyBanner(remember) => write!(f, "DismissWarpifyBanner({remember:?})"),
             ShowSubshellBanner(_) => f.write_str("ShowSubshellBanner"),
             ShowWarpifySshBanner(_, _) => f.write_str("ShowWarpifySshBanner"),
+            #[cfg(feature = "command_corrections")]
             InsertMostRecentCommandCorrection => f.write_str("InsertMostRecentCommandCorrection"),
             AliasExpansionBanner(action) => write!(f, "AliasExpansionBanner({action:?}"),
             OpenInWarpBanner(action) => write!(f, "OpenInWarpBanner({action:?})"),

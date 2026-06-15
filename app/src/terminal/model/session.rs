@@ -512,6 +512,7 @@ impl Sessions {
     }
 }
 
+#[cfg(feature = "command_corrections")]
 impl From<SessionType> for command_corrections::SessionType {
     fn from(session_type: SessionType) -> Self {
         match session_type {
@@ -521,6 +522,7 @@ impl From<SessionType> for command_corrections::SessionType {
     }
 }
 
+#[cfg(feature = "command_corrections")]
 impl From<&SessionType> for command_corrections::SessionType {
     fn from(session_type: &SessionType) -> Self {
         match session_type {
@@ -548,6 +550,7 @@ impl HostInfo {
     // we should instead implement this as either
     //   From<StructName> for command_corrections::PlatformType
     //   TryFrom<StructName for command_corrections::PlatformType
+    #[cfg(feature = "command_corrections")]
     pub fn platform_type(&self) -> command_corrections::PlatformType {
         use command_corrections::PlatformType::*;
 
@@ -1489,6 +1492,7 @@ impl Session {
         self.command_executor.read().cancel_active_commands();
     }
 
+    #[cfg(feature = "command_corrections")]
     pub async fn git_branches_for_command_corrections(&self, working_dir: &str) -> Vec<String> {
         let env_vars = self
             .info

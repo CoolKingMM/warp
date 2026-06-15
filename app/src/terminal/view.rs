@@ -78,8 +78,11 @@ use block_onboarding::onboarding_agentic_suggestions_block::{
 use block_onboarding::onboarding_drive_sharing_block::OnboardingDriveSharingBlock;
 use bookmarks::render_floating_block_snapshot;
 use chrono::{DateTime, Local, NaiveDateTime};
+#[cfg(feature = "command_corrections")]
 use command_corrections::rules::generic::history::History as CommandCorrectionsHistoryRule;
+#[cfg(feature = "command_corrections")]
 use command_corrections::rules::{Rule, RuleId as CommandCorrectionsRuleId};
+#[cfg(feature = "command_corrections")]
 use command_corrections::{correct_command, Command, Correction, HistoryItem, SessionMetadata};
 use enclose::enclose;
 pub use init::{
@@ -363,12 +366,13 @@ use crate::server::ids::{ObjectUid, SyncId};
 use crate::server::server_api::ServerApi;
 use crate::server::telemetry::{
     self, AgentModeAttachContextMethod, AgentModeEntrypoint, AgentModeRewindEntrypoint,
-    AnonymousUserSignupEntrypoint, BlockLatencyInfo, BootstrappingInfo,
-    CommandCorrectionAcceptedType, CommandCorrectionEvent, InteractionSource, LinkOpenMethod,
-    NotificationAgentVariant, NotificationsTurnedOnSource, PaletteSource, PromptSuggestionViewType,
-    SaveAsWorkflowModalSource, SecretInteraction, SharingDialogSource, SlowBootstrapInfo,
-    TelemetryEvent, ToggleBlockFilterSource, WorkflowTelemetryMetadata,
+    AnonymousUserSignupEntrypoint, BlockLatencyInfo, BootstrappingInfo, InteractionSource,
+    LinkOpenMethod, NotificationAgentVariant, NotificationsTurnedOnSource, PaletteSource,
+    PromptSuggestionViewType, SaveAsWorkflowModalSource, SecretInteraction, SharingDialogSource,
+    SlowBootstrapInfo, TelemetryEvent, ToggleBlockFilterSource, WorkflowTelemetryMetadata,
 };
+#[cfg(feature = "command_corrections")]
+use crate::server::telemetry::{CommandCorrectionAcceptedType, CommandCorrectionEvent};
 use crate::session_management::{CommandContext, SessionNavigationPromptElements};
 use crate::settings::ai::FocusedTerminalInfo;
 #[cfg(feature = "local_fs")]
@@ -415,6 +419,7 @@ use crate::terminal::cli_agent_sessions::{
     CLIAgentSessionsModelEvent,
 };
 use crate::terminal::color::List;
+#[cfg(feature = "command_corrections")]
 use crate::terminal::command_corrections_denylist::COMMAND_CORRECTIONS_PREFERRED_DENYLIST;
 use crate::terminal::event::{
     AfterBlockCompletedEvent, BlockLatencyData, BlockType, RemoteServerSetupState, TerminalMode,
@@ -595,6 +600,7 @@ lazy_static! {
     /// This is purely a heuristic and may be subject to change based on user reports.
     static ref TRIGGER_RC_FILE_SUBSHELL_BOOTSTRAP_DELAY: Duration = Duration::from_millis(100);
 
+    #[cfg(feature = "command_corrections")]
     static ref DEFAULT_IGNORED_RULES_FOR_COMMAND_CORRECTIONS: [CommandCorrectionsRuleId; 1] = [
         CommandCorrectionsHistoryRule.id()
     ];
@@ -2612,6 +2618,7 @@ pub struct TerminalView {
     inline_banners_state: InlineBannersState,
 
     /// Most recent command correction encountered, if any, used for the keyboard shortcut action.
+    #[cfg(feature = "command_corrections")]
     most_recent_command_correction: Option<Correction>,
 
     /// Set of block indexes that are bookmarked, including the mouse states for their indicators
@@ -4350,6 +4357,7 @@ impl TerminalView {
             is_file_drop_target: false,
             is_ssh_file_uploader: false,
             ssh_file_upload,
+            #[cfg(feature = "command_corrections")]
             most_recent_command_correction: None,
             shell_indicator_type: None,
             shell_detail: None,
@@ -10033,6 +10041,7 @@ impl TerminalView {
         ctx.notify();
     }
 
+    #[cfg(feature = "command_corrections")]
     fn insert_most_recent_command_correction(&mut self, ctx: &mut ViewContext<Self>) {
         if let Some(most_recent_command_correction) = self.most_recent_command_correction.as_ref() {
             self.input.update(ctx, |input, ctx| {
@@ -10185,6 +10194,7 @@ impl TerminalView {
         ctx.notify();
     }
 
+    #[cfg(feature = "command_corrections")]
     fn insert_command_correction(&mut self, correction: &Correction, ctx: &mut ViewContext<Self>) {
         self.input.update(ctx, |input, ctx| {
             input.replace_buffer_content(correction.command.as_str(), ctx);
@@ -12456,6 +12466,7 @@ impl TerminalView {
 
                     // We don't want any suggestion UIs on AI requested blocks.
                     if !block_completed.was_part_of_agent_interaction {
+                        #[cfg(feature = "command_corrections")]
                         self.maybe_generate_command_suggestions(block_completed, ctx);
 
                         if self.can_suggest_alias_expansion(ctx) {
@@ -15137,6 +15148,7 @@ impl TerminalView {
         );
     }
 
+    #[cfg(feature = "command_corrections")]
     async fn fetch_command_corrections(
         block: UserBlockCompleted,
         session: Option<Arc<Session>>,
@@ -15221,6 +15233,7 @@ impl TerminalView {
     }
 
     /// If a command correction exists, generate the command correction banner.
+    #[cfg(feature = "command_corrections")]
     fn after_command_correction_generation(
         &mut self,
         corrections: Vec<Correction>,
@@ -15830,6 +15843,7 @@ impl TerminalView {
     }
 
     /// Generates command corrections, if applicable.
+    #[cfg(feature = "command_corrections")]
     fn maybe_generate_command_suggestions(
         &mut self,
         block_completed: &UserBlockCompleted,
@@ -21414,6 +21428,7 @@ impl TerminalView {
             InputEvent::AutosuggestionAccepted => {
                 // TODO(suraj): maybe pass down the autosuggestion type and send
                 // the telemetry deeper so we don't have to guesstimate the state
+                #[cfg(feature = "command_corrections")]
                 if let Some(most_recent_command_correction) =
                     self.most_recent_command_correction.as_ref()
                 {
@@ -26203,8 +26218,9 @@ impl TypedActionView for TerminalView {
                 "Opened file search palette",
                 WarpA11yRole::ButtonRole,
             )),
-            InsertCommandCorrection { .. }
-            | BlockListContextMenu(_)
+            #[cfg(feature = "command_corrections")]
+            InsertCommandCorrection { .. } => ActionAccessibilityContent::from_debug(),
+            BlockListContextMenu(_)
             | CloseContextMenu
             | Paste
             | MiddleClickOnGrid { .. }
@@ -26249,7 +26265,6 @@ impl TypedActionView for TerminalView {
             | OpenBlockListContextMenu
             | AliasExpansionBanner(_)
             | VimModeBanner(_)
-            | InsertMostRecentCommandCorrection
             | StopSharingCurrentSession { .. }
             | RequestSharedSessionRole(_)
             | OnboardingFlow(_)
@@ -26265,6 +26280,8 @@ impl TypedActionView for TerminalView {
             | ToggleAIDocumentPane
             | ClearMarkedText
             | StartLspServer => ActionAccessibilityContent::from_debug(),
+            #[cfg(feature = "command_corrections")]
+            InsertMostRecentCommandCorrection => ActionAccessibilityContent::from_debug(),
             #[cfg(feature = "local_fs")]
             OpenCodeInWarp { .. } => ActionAccessibilityContent::from_debug(),
             OpenInWarpBanner(action) => self.open_in_warp_banner_accessibility_content(*action),
@@ -26664,6 +26681,7 @@ impl TypedActionView for TerminalView {
             }
             LegacySSHBanner(action) => self.ssh_banner_action(*action, ctx),
             JumpToBookmark(index) => self.jump_to_bookmark(*index, ctx),
+            #[cfg(feature = "command_corrections")]
             InsertCommandCorrection { correction } => {
                 self.insert_command_correction(correction, ctx);
             }
@@ -26781,6 +26799,7 @@ impl TypedActionView for TerminalView {
                     );
                 }
             }
+            #[cfg(feature = "command_corrections")]
             InsertMostRecentCommandCorrection => self.insert_most_recent_command_correction(ctx),
             AliasExpansionBanner(action) => self.alias_expansion_banner_action(*action, ctx),
             OpenInWarpBanner(action) => self.handle_open_in_warp_banner_action(*action, ctx),

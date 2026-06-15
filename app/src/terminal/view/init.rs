@@ -676,7 +676,6 @@ pub fn init(app: &mut AppContext) {
             "Scroll terminal output up one page",
             TerminalAction::PageUp,
         )
-        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_key_binding("pageup")
         .with_context_predicate(
             id!("Terminal")
@@ -689,7 +688,6 @@ pub fn init(app: &mut AppContext) {
             "Scroll terminal output down one page",
             TerminalAction::PageDown,
         )
-        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_key_binding("pagedown")
         .with_context_predicate(
             id!("Terminal")

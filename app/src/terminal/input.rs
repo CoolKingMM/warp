@@ -1867,7 +1867,6 @@ pub fn init(app: &mut AppContext) {
             "Scroll terminal output up one page",
             InputAction::PageUp,
         )
-        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Input") & !id!("IMEOpen"))
         .with_key_binding("pageup"),
         EditableBinding::new(
@@ -1875,7 +1874,6 @@ pub fn init(app: &mut AppContext) {
             "Scroll terminal output down one page",
             InputAction::PageDown,
         )
-        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Input") & !id!("IMEOpen"))
         .with_key_binding("pagedown"),
     ]);
@@ -8836,6 +8834,11 @@ impl Input {
 
     // TODO - Implement PageUp functionality for input suggestions menu
     fn editor_page_up(&mut self, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            ctx.dispatch_typed_action(&WorkspaceAction::FocusPrevTerminalInProject);
+            return;
+        }
+
         let event = self.editor.read(ctx, |editor, ctx| {
             TelemetryEvent::PageUpDownInEditorPressed {
                 is_empty_editor: editor.is_empty(ctx),
@@ -9173,6 +9176,11 @@ impl Input {
 
     // TODO - Implement PageDown functionality for input suggestions menu
     fn editor_page_down(&mut self, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            ctx.dispatch_typed_action(&WorkspaceAction::FocusNextTerminalInProject);
+            return;
+        }
+
         let event = self.editor.read(ctx, |editor, ctx| {
             TelemetryEvent::PageUpDownInEditorPressed {
                 is_empty_editor: editor.is_empty(ctx),

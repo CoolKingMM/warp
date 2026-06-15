@@ -22540,6 +22540,11 @@ impl TerminalView {
     }
 
     fn page_up(&mut self, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            ctx.dispatch_typed_action(&WorkspaceAction::FocusPrevTerminalInProject);
+            return;
+        }
+
         if self.is_long_running() {
             // Note: We explicitly use the CSI prefix, as the terminal we are impersonating
             // (`xterm-256color`) has the escape sequence for page up defined with that prefix
@@ -22551,6 +22556,11 @@ impl TerminalView {
     }
 
     fn page_down(&mut self, ctx: &mut ViewContext<Self>) {
+        if cfg!(feature = "oss_slim") {
+            ctx.dispatch_typed_action(&WorkspaceAction::FocusNextTerminalInProject);
+            return;
+        }
+
         if self.is_long_running() {
             // Note: We explicitly use the CSI prefix, as the terminal we are impersonating
             // (`xterm-256color`) has the escape sequence for page down defined with that prefix

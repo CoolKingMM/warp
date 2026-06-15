@@ -456,16 +456,18 @@ pub fn init(app: &mut AppContext) {
         ]);
     }
 
-    app.register_fixed_bindings([
-        // Menu dispatch for the "Open File Picker" custom action.
-        FixedBinding::custom(
-            CustomAction::ToggleProjectExplorer,
-            WorkspaceAction::ToggleProjectExplorer,
-            BindingDescription::new("Toggle project explorer")
-                .with_custom_description(bindings::MAC_MENUS_CONTEXT, "Project Explorer"),
-            id!("Workspace") & id!(flags::SHOW_PROJECT_EXPLORER),
-        ),
-    ]);
+    if !cfg!(feature = "oss_slim") {
+        app.register_fixed_bindings([
+            // Menu dispatch for the "Open File Picker" custom action.
+            FixedBinding::custom(
+                CustomAction::ToggleProjectExplorer,
+                WorkspaceAction::ToggleProjectExplorer,
+                BindingDescription::new("Toggle project explorer")
+                    .with_custom_description(bindings::MAC_MENUS_CONTEXT, "Project Explorer"),
+                id!("Workspace") & id!(flags::SHOW_PROJECT_EXPLORER),
+            ),
+        ]);
+    }
 
     app.register_editable_bindings([
         EditableBinding::new(
@@ -754,6 +756,7 @@ pub fn init(app: &mut AppContext) {
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())
         .with_context_predicate(id!("Workspace") & id!(flags::SHOW_PROJECT_EXPLORER))
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_custom_action(CustomAction::ToggleProjectExplorer),
         EditableBinding::new(
             LEFT_PANEL_AGENT_CONVERSATIONS_BINDING_NAME,
@@ -783,6 +786,7 @@ pub fn init(app: &mut AppContext) {
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())
         .with_context_predicate(id!("Workspace") & id!(flags::SHOW_PROJECT_EXPLORER))
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_mac_key_binding("cmd-shift->")
         .with_linux_or_windows_key_binding("ctrl-shift->"),
         EditableBinding::new(
@@ -801,7 +805,8 @@ pub fn init(app: &mut AppContext) {
                 .with_custom_description(bindings::MAC_MENUS_CONTEXT, "Project Explorer"),
             WorkspaceAction::ToggleProjectExplorer,
         )
-        .with_context_predicate(id!("Workspace") & id!(flags::SHOW_PROJECT_EXPLORER)),
+        .with_context_predicate(id!("Workspace") & id!(flags::SHOW_PROJECT_EXPLORER))
+        .with_enabled(|| !cfg!(feature = "oss_slim")),
         EditableBinding::new(
             OPEN_GLOBAL_SEARCH_BINDING_NAME,
             BindingDescription::new("Open global search")

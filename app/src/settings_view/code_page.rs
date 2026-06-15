@@ -213,7 +213,9 @@ impl CodeSettingsPageView {
             widgets.push(Box::new(CodeReviewDiffStatsToggleWidget::default()));
         }
 
-        widgets.push(Box::new(ProjectExplorerToggleWidget::default()));
+        if !cfg!(feature = "oss_slim") {
+            widgets.push(Box::new(ProjectExplorerToggleWidget::default()));
+        }
         widgets.push(Box::new(GlobalSearchToggleWidget::default()));
     }
 

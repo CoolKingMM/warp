@@ -223,7 +223,9 @@ impl AgentToolbarItemKind {
             items.push(Self::HandoffToCloud);
         }
         items.push(Self::VoiceInput);
-        items.push(Self::FileAttach);
+        if !cfg!(feature = "oss_slim") {
+            items.push(Self::FileAttach);
+        }
         items
     }
 
@@ -237,9 +239,11 @@ impl AgentToolbarItemKind {
             Self::ModelSelector,
             Self::NLDToggle,
             Self::VoiceInput,
-            Self::FileAttach,
             Self::ContextWindowUsage,
         ]);
+        if !cfg!(feature = "oss_slim") {
+            items.push(Self::FileAttach);
+        }
         if FeatureFlag::FastForwardAutoexecuteButton.is_enabled() {
             items.push(Self::FastForwardToggle);
         }
@@ -260,16 +264,20 @@ impl AgentToolbarItemKind {
     /// Default left-side items for the CLI agent footer.
     pub fn cli_default_left() -> Vec<Self> {
         let mut items = vec![
-            Self::FileAttach,
             Self::VoiceInput,
             Self::ContextChip(ContextChipKind::GitDiffStats),
         ];
+        if !cfg!(feature = "oss_slim") {
+            items.insert(0, Self::FileAttach);
+        }
         if FeatureFlag::CreatingSharedSessions.is_enabled()
             && FeatureFlag::HOARemoteControl.is_enabled()
         {
             items.push(Self::ShareSession);
         }
-        items.push(Self::FileExplorer);
+        if !cfg!(feature = "oss_slim") {
+            items.push(Self::FileExplorer);
+        }
         if FeatureFlag::CLIAgentRichInput.is_enabled() {
             items.push(Self::RichInput);
         }
@@ -291,13 +299,10 @@ impl AgentToolbarItemKind {
             .into_iter()
             .map(Self::ContextChip)
             .collect();
-        items.extend([
-            Self::FileExplorer,
-            Self::RichInput,
-            Self::FileAttach,
-            Self::VoiceInput,
-            Self::Settings,
-        ]);
+        if !cfg!(feature = "oss_slim") {
+            items.extend([Self::FileExplorer, Self::FileAttach]);
+        }
+        items.extend([Self::RichInput, Self::VoiceInput, Self::Settings]);
         if FeatureFlag::CreatingSharedSessions.is_enabled()
             && FeatureFlag::HOARemoteControl.is_enabled()
         {

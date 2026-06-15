@@ -22564,7 +22564,7 @@ impl Workspace {
                 .set
                 .insert(flags::SHOW_BASE_MODEL_PICKER_IN_PROMPT_FLAG);
         }
-        if *ai_settings.should_render_cli_agent_footer.value() {
+        if !cfg!(feature = "oss_slim") && *ai_settings.should_render_cli_agent_footer.value() {
             context.set.insert(flags::CLI_AGENT_FOOTER_ENABLED);
         }
         if *ai_settings.auto_toggle_rich_input.value() {
@@ -22584,9 +22584,10 @@ impl Workspace {
             context.set.insert(flags::AGENT_IN_APP_NOTIFICATIONS_FLAG);
         }
 
-        if *ai_settings
-            .should_render_use_agent_footer_for_user_commands
-            .value()
+        if !cfg!(feature = "oss_slim")
+            && *ai_settings
+                .should_render_use_agent_footer_for_user_commands
+                .value()
         {
             context.set.insert(flags::USE_AGENT_FOOTER_FLAG);
         }

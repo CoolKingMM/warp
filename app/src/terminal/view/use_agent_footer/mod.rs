@@ -302,6 +302,11 @@ impl TerminalView {
         model: &TerminalModel,
         app: &AppContext,
     ) -> bool {
+        if cfg!(feature = "oss_slim") {
+            let _ = (model, app);
+            return false;
+        }
+
         let ai_settings = AISettings::as_ref(app);
 
         // If a warpify mode is set, that means ssh or subshell is detected and we should show the footer.

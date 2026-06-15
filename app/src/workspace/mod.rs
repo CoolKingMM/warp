@@ -569,6 +569,34 @@ pub fn init(app: &mut AppContext) {
         .with_enabled(|| cfg!(feature = "oss_slim"))
         .with_linux_or_windows_key_binding("alt-1"),
         EditableBinding::new(
+            "workspace:focus_prev_terminal_in_project",
+            "Activate previous project terminal",
+            WorkspaceAction::FocusPrevTerminalInProject,
+        )
+        .with_context_predicate(
+            id!("Workspace")
+                & (id!("Terminal") | id!("Input"))
+                & !id!("EditorFocused")
+                & !id!("Workspace_PaneDragging"),
+        )
+        .with_group(bindings::BindingGroup::Navigation.as_str())
+        .with_enabled(|| cfg!(feature = "oss_slim"))
+        .with_linux_or_windows_key_binding("pageup"),
+        EditableBinding::new(
+            "workspace:focus_next_terminal_in_project",
+            "Activate next project terminal",
+            WorkspaceAction::FocusNextTerminalInProject,
+        )
+        .with_context_predicate(
+            id!("Workspace")
+                & (id!("Terminal") | id!("Input"))
+                & !id!("EditorFocused")
+                & !id!("Workspace_PaneDragging"),
+        )
+        .with_group(bindings::BindingGroup::Navigation.as_str())
+        .with_enabled(|| cfg!(feature = "oss_slim"))
+        .with_linux_or_windows_key_binding("pagedown"),
+        EditableBinding::new(
             "workspace:activate_prev_tab",
             "Activate previous tab",
             WorkspaceAction::ActivatePrevTab,

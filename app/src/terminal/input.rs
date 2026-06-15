@@ -1867,6 +1867,7 @@ pub fn init(app: &mut AppContext) {
             "Scroll terminal output up one page",
             InputAction::PageUp,
         )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Input") & !id!("IMEOpen"))
         .with_key_binding("pageup"),
         EditableBinding::new(
@@ -1874,6 +1875,7 @@ pub fn init(app: &mut AppContext) {
             "Scroll terminal output down one page",
             InputAction::PageDown,
         )
+        .with_enabled(|| !cfg!(feature = "oss_slim"))
         .with_context_predicate(id!("Input") & !id!("IMEOpen"))
         .with_key_binding("pagedown"),
     ]);

@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[cfg(feature = "command_corrections")]
 use command_corrections::ExitCode as CommandCorrectionsExitCode;
 use serde::{Deserialize, Serialize};
 
@@ -54,12 +55,14 @@ impl From<i32> for ExitCode {
     }
 }
 
+#[cfg(feature = "command_corrections")]
 impl From<CommandCorrectionsExitCode> for ExitCode {
     fn from(code: CommandCorrectionsExitCode) -> Self {
         Self::from(code.raw())
     }
 }
 
+#[cfg(feature = "command_corrections")]
 impl From<ExitCode> for CommandCorrectionsExitCode {
     fn from(code: ExitCode) -> Self {
         Self::from(code.0)

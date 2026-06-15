@@ -11,7 +11,7 @@ bitflags.workspace = true
 bitflags-serde-legacy.workspace = true
 cfg-if.workspace = true
 channel_versions.workspace = true
-command-corrections.workspace = true
+command-corrections = { workspace = true, optional = true }
 enum-iterator.workspace = true
 get-size.workspace = true
 itertools.workspace = true
@@ -30,7 +30,7 @@ unicode-width.workspace = true
 uuid.workspace = true
 version-compare.workspace = true
 vte.workspace = true
-warp_completer.workspace = true
+warp_completer = { workspace = true, default-features = false }
 warp_core.workspace = true
 warp_util.workspace = true
 warpui_core.workspace = true
@@ -39,4 +39,5 @@ warpui_core.workspace = true
 unicode-segmentation = "1.11.0"
 
 [features]
+command_corrections = ["dep:command-corrections"]
 test-util = []

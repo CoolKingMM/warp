@@ -253,6 +253,7 @@ pub enum ShellType {
     PowerShell,
 }
 
+#[cfg(feature = "command_corrections")]
 impl From<ShellType> for command_corrections::Shell {
     fn from(s: ShellType) -> command_corrections::Shell {
         match s {

@@ -872,7 +872,11 @@ autoupdate_ui_revamp = []
 warp_packs = []
 suggested_rules = []
 command_correction_key = []
-command_corrections = ["dep:command-corrections"]
+command_corrections = [
+    "dep:command-corrections",
+    "warp_core/command_corrections",
+    "warp_terminal/command_corrections",
+]
 command_signatures = ["warp_completer/embedded_signatures"]
 full_source_code_embedding = []
 use_tantivy_search = []

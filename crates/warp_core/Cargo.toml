@@ -6,6 +6,7 @@ publish.workspace = true
 license.workspace = true
 
 [features]
+command_corrections = ["dep:command-corrections"]
 crash_reporting = ["dep:sentry", "dep:sentry-log"]
 integration_tests = []
 local_fs = []
@@ -15,7 +16,7 @@ test-util = ["dep:mockito", "warp_features/test-util"]
 [dependencies]
 anyhow.workspace = true
 cfg-if.workspace = true
-command-corrections.workspace = true
+command-corrections = { workspace = true, optional = true }
 dashmap.workspace = true
 dirs.workspace = true
 directories.workspace = true

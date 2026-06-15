@@ -476,14 +476,14 @@ lto = "thin"
 [profile.rlto]
 inherits = "release-lto"
 
-# OSS Windows releases prioritize build time and installer size over maximum
-# runtime throughput. Avoid ThinLTO and strip symbols so GitHub Actions can
-# produce a smaller installer faster.
+# OSS Windows releases prioritize GitHub-hosted CI time over maximum runtime
+# throughput. Avoid ThinLTO, use a lighter optimization level, increase codegen
+# parallelism, and strip symbols to keep the installer reasonably small.
 [profile.osslite]
 inherits = "release"
 debug = 0
-opt-level = "s"
-codegen-units = 16
+opt-level = 1
+codegen-units = 256
 strip = "symbols"
 
 # A custom release-like profile that forces debug assertions on.

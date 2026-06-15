@@ -8,6 +8,8 @@ on:
         required: false
         type: string
   push:
+    branches:
+      - master
     tags:
       - "v*"
 
@@ -15,7 +17,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-release
+  group: ${{ github.workflow }}-${{ github.ref_type == 'tag' && 'release' || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -40,10 +42,11 @@ jobs:
           target_os: windows
           is_self_hosted: false
           install_release_deps: false
-          cache_key: ${{ github.ref_type == 'tag' && 'windows-oss-release' || 'windows-oss' }}
-          save_cache: ${{ github.ref_type == 'tag' }}
+          cache_key: windows-oss-release
+          save_cache: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Install Inno Setup
+        if: ${{ github.ref_type == 'tag' }}
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
@@ -90,7 +93,6 @@ jobs:
             '-RELEASE_TAG', '${{ steps.version.outputs.release_tag }}'
           )
           if ($env:REF_TYPE -ne 'tag') {
-            $bundleArgs += '-DEBUG_BUILD'
             $bundleArgs += '-SKIP_BUILD_INSTALLER'
           }
 
@@ -109,7 +111,7 @@ jobs:
           }
 
       - name: Stage portable artifact
-        if: ${{ github.ref_type != 'tag' }}
+        if: ${{ github.ref_type != 'tag' && github.event_name == 'workflow_dispatch' }}
         id: portable
         shell: pwsh
         env:
@@ -191,7 +193,7 @@ jobs:
           "portable_path=$portableDir" >> $env:GITHUB_OUTPUT
 
       - name: Upload portable artifact
-        if: ${{ github.ref_type != 'tag' }}
+        if: ${{ github.ref_type != 'tag' && github.event_name == 'workflow_dispatch' }}
         uses: actions/upload-artifact@v4
         with:
           name: WarpOssPortable-windows-x64

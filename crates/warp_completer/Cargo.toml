@@ -32,6 +32,7 @@ string-offset.workspace = true
 thiserror.workspace = true
 warp_cli.workspace = true
 warp_core.workspace = true
+warp-completion-metadata.workspace = true
 warp_js = { workspace = true, optional = true }
 warpui_core.workspace = true
 warp_util.workspace = true
@@ -39,12 +40,12 @@ typed-path.workspace = true
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 # For wasm, we don't use the feature "embed-signatures".
-warp-command-signatures = {workspace = true}
+warp-command-signatures = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 command = { path = "../command" }
 rquickjs = { workspace = true, optional = true }
-warp-command-signatures = { workspace = true }
+warp-command-signatures = { workspace = true, optional = true }
 
 [target.'cfg(not(target_family = "wasm"))'.dev-dependencies]
 command = { path = "../command", features = ["test-util"] }
@@ -56,7 +57,7 @@ warp_completer = { path = ".", features = ["test-util"] }
 
 [features]
 default = ["embedded_signatures"]
-embedded_signatures = ["warp-command-signatures/embed-signatures"]
+embedded_signatures = ["dep:warp-command-signatures", "warp-command-signatures/embed-signatures"]
 # Enables the completions-on-js implementation of the completion engine.
 # Note that this feature is only compatible with non-wasm targets.
 v2 = ["dep:warp_js", "dep:rquickjs"]

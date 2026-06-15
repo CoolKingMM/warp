@@ -106,9 +106,16 @@ impl CommandRegistry {
 // We only implement Default for this in tests, as in production, we should
 // always use the shared instance, but in tests, we might want to configure
 // instances differently.
-#[cfg(all(feature = "test-util", feature = "embedded_signatures"))]
+#[cfg(feature = "test-util")]
 impl Default for CommandRegistry {
     fn default() -> Self {
-        CommandRegistry::new_with_embedded_signatures()
+        #[cfg(feature = "embedded_signatures")]
+        {
+            CommandRegistry::new_with_embedded_signatures()
+        }
+        #[cfg(not(feature = "embedded_signatures"))]
+        {
+            CommandRegistry::empty()
+        }
     }
 }

@@ -8,10 +8,10 @@ use chrono::{DateTime, Local};
 use fuzzy_match::match_indices;
 use itertools::Itertools;
 use pathfinder_geometry::vector::vec2f;
-use warp_command_signatures::IconType;
 use warp_completer::completer::{
     MatchType, PathSeparators, Suggestion, SuggestionResults, SuggestionType,
 };
+use warp_completion_metadata::IconType;
 use warp_core::features::FeatureFlag;
 use warp_core::ui::theme::AnsiColorIdentifier;
 use warpui::accessibility::{AccessibilityContent, WarpA11yRole};

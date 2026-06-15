@@ -1,3 +1,8 @@
+#[cfg(feature = "embedded_signatures")]
+extern crate warp_command_signatures;
+#[cfg(not(feature = "embedded_signatures"))]
+extern crate warp_completion_metadata as warp_command_signatures;
+
 pub mod completer;
 pub mod meta;
 pub mod parsers;

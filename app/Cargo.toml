@@ -232,6 +232,7 @@ walkdir.workspace = true
 warp-workflows.workspace = true
 warp_assets.workspace = true
 warp_completer = { workspace = true, default-features = false }
+warp-completion-metadata.workspace = true
 warp_core.workspace = true
 warp_editor.workspace = true
 warp_graphql.workspace = true
@@ -336,7 +337,6 @@ rquickjs = { workspace = true, optional = true }
 rustls.workspace = true
 syntect = "5.0"
 sysinfo.workspace = true
-warp-command-signatures = { workspace = true }
 is_executable = "1.0.1"
 gethostname = "1.1.0"
 watcher.workspace = true
@@ -361,8 +361,6 @@ wasm-bindgen.workspace = true
 getrandom = { version = "0.2", features = ["js"] }
 gloo.workspace = true
 serde-wasm-bindgen = "0.6.5"
-# For wasm, we don't use the feature "embed-signatures".
-warp-command-signatures = { workspace = true }
 web-sys.workspace = true
 warp_web_event_bus.workspace = true
 

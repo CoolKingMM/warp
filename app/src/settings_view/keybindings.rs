@@ -49,6 +49,13 @@ const EDIT_BUTTONS_BORDER_RADIUS: f32 = 4.0;
 pub const SEARCH_PLACEHOLDER: &str = "按名称或按键搜索（例如 \"cmd d\"）";
 const SHORTCUT_CONFLICT_WARNING_TEXT: &str = "此快捷键与其他快捷键冲突";
 const KEYBINDINGS_PAGE_SHORTCUT: &str = "workspace:toggle_keybindings_page";
+const PAGE_DESCRIPTION_TEXT: &str = "在下面为现有操作添加自定义键盘快捷键。";
+const PAGE_SHORTCUT_PREFIX_TEXT: &str = "使用";
+const PAGE_SHORTCUT_SUFFIX_TEXT: &str = "可随时在侧边窗格中查看这些快捷键。";
+const LOCAL_ONLY_TOOLTIP_TEXT: &str = "键盘快捷键不会同步到云端";
+const PAGE_HEADER_TEXT: &str = "配置键盘快捷键";
+const COMMAND_COLUMN_TEXT: &str = "命令";
+const PRESS_NEW_SHORTCUT_TEXT: &str = "按下新的键盘快捷键";
 const RESET_BUTTON_TEXT: &str = "默认";
 const CANCEL_BUTTON_TEXT: &str = "取消";
 const CLEAR_BUTTON_TEXT: &str = "清除";
@@ -325,7 +332,7 @@ impl KeybindingRow {
             Empty::new().finish()
         };
 
-        let press_new_shortcut_text = render_text("Press new keyboard shortcut", None, appearance);
+        let press_new_shortcut_text = render_text(PRESS_NEW_SHORTCUT_TEXT, None, appearance);
 
         let new_shortcut_element = Container::new(press_new_shortcut_text)
             .with_margin_left(ROW_LEFT_MARGIN)
@@ -1061,7 +1068,7 @@ impl KeybindingsWidget {
     ) -> Box<dyn Element> {
         let font_size = appearance.ui_font_size() + FONT_DELTA;
         let mut description = Flex::column().with_child(render_text(
-            "Add your own custom keybindings to existing actions below.",
+            PAGE_DESCRIPTION_TEXT,
             Some(UiComponentStyles {
                 font_size: Some(font_size),
                 font_color: Some(
@@ -1087,7 +1094,7 @@ impl KeybindingsWidget {
                 Wrap::row()
                     .with_child(
                         Container::new(render_text(
-                            "Use",
+                            PAGE_SHORTCUT_PREFIX_TEXT,
                             Some(UiComponentStyles {
                                 font_size: Some(font_size),
                                 font_color: Some(
@@ -1116,7 +1123,7 @@ impl KeybindingsWidget {
                     )
                     .with_child(
                         Container::new(render_text(
-                            "to reference these keybindings in a side pane at anytime.",
+                            PAGE_SHORTCUT_SUFFIX_TEXT,
                             Some(UiComponentStyles {
                                 font_size: Some(font_size),
                                 font_color: Some(
@@ -1196,7 +1203,7 @@ impl SettingsWidget for KeybindingsWidget {
         {
             Some(LocalOnlyIconState::Visible {
                 mouse_state: self.local_only_icon_mouse_state.clone(),
-                custom_tooltip: Some("Keyboard shortcuts are not synced to the cloud".to_string()),
+                custom_tooltip: Some(LOCAL_ONLY_TOOLTIP_TEXT.to_string()),
             })
         } else {
             None
@@ -1204,7 +1211,7 @@ impl SettingsWidget for KeybindingsWidget {
 
         let subheader = render_sub_header(
             appearance,
-            "Configure keyboard shortcuts",
+            PAGE_HEADER_TEXT,
             local_only_icon_state,
         );
         let description = self.render_description(view.bindings.as_ref(), appearance);
@@ -1214,7 +1221,7 @@ impl SettingsWidget for KeybindingsWidget {
             .with_child(description)
             .with_child(render_columns(
                 Container::new(render_text(
-                    "Command",
+                    COMMAND_COLUMN_TEXT,
                     Some(UiComponentStyles {
                         font_size: Some(appearance.ui_font_size() + FONT_DELTA),
                         ..Default::default()

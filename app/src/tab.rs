@@ -822,6 +822,12 @@ impl TabStyles {
                 color.into(),
             ))
         });
+        let active_font_color = if cfg!(feature = "oss_slim") {
+            theme.ansi_fg_green()
+        } else {
+            theme.active_ui_text_color().into()
+        };
+
         TabStyles {
             background,
             error_color,
@@ -832,7 +838,7 @@ impl TabStyles {
                 .set_font_family_id(appearance.ui_builder().ui_font_family())
                 .set_font_size(appearance.ui_builder().ui_font_size()),
             active: UiComponentStyles::default()
-                .set_font_color(theme.active_ui_text_color().into())
+                .set_font_color(active_font_color)
                 .set_font_weight(Weight::Medium)
                 .set_border_color(default_active_tab_highlight(theme).into()),
         }

@@ -1643,7 +1643,6 @@ pub(crate) fn initialize_app(
         });
     }
 
-    #[cfg(not(feature = "oss_slim"))]
     {
         use code_review::git_status_update::GitStatusUpdateModel;
         ctx.add_singleton_model(|_| GitStatusUpdateModel::new());
@@ -1746,7 +1745,6 @@ pub(crate) fn initialize_app(
     ctx.add_singleton_model(|_| VimRegisters::new());
     ctx.add_singleton_model(UndoCloseStack::new);
     ctx.add_singleton_model(|_| ToastStack);
-    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(|_| GlobalCodeReviewModel);
     ctx.add_singleton_model(workspace::OneTimeModalModel::new);
     #[cfg(not(feature = "oss_slim"))]

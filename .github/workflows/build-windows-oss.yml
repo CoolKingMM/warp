@@ -42,7 +42,8 @@ jobs:
           target_os: windows
           is_self_hosted: false
           install_release_deps: false
-          cache_key: windows-oss
+          cache_key: ${{ github.ref_type == 'tag' && 'windows-oss-release' || 'windows-oss' }}
+          save_cache: ${{ github.ref_type == 'tag' }}
 
       - name: Install Inno Setup
         shell: pwsh

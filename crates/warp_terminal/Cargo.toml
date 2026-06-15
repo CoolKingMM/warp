@@ -30,7 +30,7 @@ unicode-width.workspace = true
 uuid.workspace = true
 version-compare.workspace = true
 vte.workspace = true
-warp_completer = { workspace = true, default-features = false }
+warp_completer.workspace = true
 warp_core.workspace = true
 warp_util.workspace = true
 warpui_core.workspace = true

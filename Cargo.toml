@@ -78,7 +78,7 @@ voice_input = { path = "crates/voice_input" }
 warp = { path = "app" }
 warp_assets = { path = "crates/warp_assets" }
 warp_cli = { path = "crates/warp_cli" }
-warp_completer = { path = "crates/warp_completer" }
+warp_completer = { path = "crates/warp_completer", default-features = false }
 warp_core = { path = "crates/warp_core" }
 warp_editor = { path = "crates/editor" }
 warp_features = { path = "crates/warp_features" }

@@ -7,7 +7,6 @@ use lazy_static::lazy_static;
 use markdown_parser::{
     parse_image_run_line, parse_markdown_with_gfm_tables, FormattedImage, FormattedTextLine,
 };
-use mermaid_to_svg::is_mermaid_diagram;
 use regex::Regex;
 use warp_util::path::LineAndColumnArg;
 
@@ -283,7 +282,7 @@ fn push_code_or_mermaid_section(
         return;
     }
 
-    if language_token.is_some_and(is_mermaid_diagram) {
+    if language_token.is_some_and(is_mermaid_diagram_language) {
         sections.push(AIAgentTextSection::MermaidDiagram {
             diagram: AgentOutputMermaidDiagram {
                 markdown_source: markdown_source_for_mermaid(&code),
@@ -297,6 +296,16 @@ fn push_code_or_mermaid_section(
             source,
         });
     }
+}
+
+#[cfg(feature = "markdown_mermaid")]
+fn is_mermaid_diagram_language(language: &str) -> bool {
+    mermaid_to_svg::is_mermaid_diagram(language)
+}
+
+#[cfg(not(feature = "markdown_mermaid"))]
+fn is_mermaid_diagram_language(_language: &str) -> bool {
+    false
 }
 
 #[cfg(test)]

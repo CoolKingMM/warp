@@ -152,7 +152,7 @@ markdown_parser.workspace = true
 mcp.workspace = true
 memchr.workspace = true
 memo-map.workspace = true
-mermaid_to_svg.workspace = true
+mermaid_to_svg = { workspace = true, optional = true }
 num-traits.workspace = true
 num_cpus = "1.13.0"
 oauth2.workspace = true
@@ -781,7 +781,7 @@ local_fs = [
 ]
 log_expensive_frames_in_sentry = []
 markdown_tables = []
-markdown_mermaid = []
+markdown_mermaid = ["dep:mermaid_to_svg", "warp_editor/markdown_mermaid"]
 mcp_server = []
 mcp_oauth = []
 mcp_debugging_ids = []

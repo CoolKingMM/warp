@@ -4,11 +4,14 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 use std::time::Duration;
 
+#[cfg(feature = "markdown_mermaid")]
 use base64::prelude::BASE64_STANDARD;
+#[cfg(feature = "markdown_mermaid")]
 use base64::Engine as _;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use markdown_parser::FormattedText;
+#[cfg(feature = "markdown_mermaid")]
 use mermaid_to_svg::MermaidTheme;
 use num_traits::SaturatingSub;
 use regex::Regex;
@@ -134,6 +137,7 @@ enum InlineStyleAction {
     None,
 }
 
+#[cfg(feature = "markdown_mermaid")]
 fn mermaid_image_html(svg: &[u8]) -> String {
     format!(
         "<img src=\"data:image/svg+xml;base64,{}\" alt=\"Mermaid diagram\" />",
@@ -141,11 +145,17 @@ fn mermaid_image_html(svg: &[u8]) -> String {
     )
 }
 
+#[cfg(feature = "markdown_mermaid")]
 fn render_mermaid_clipboard_html(source: &str) -> Option<String> {
     let svg = mermaid_to_svg::render_mermaid_to_svg(source, Some(&MermaidTheme::light()))
         .ok()?
         .into_bytes();
     Some(mermaid_image_html(&svg))
+}
+
+#[cfg(not(feature = "markdown_mermaid"))]
+fn render_mermaid_clipboard_html(_source: &str) -> Option<String> {
+    None
 }
 
 impl NotebooksEditorModel {

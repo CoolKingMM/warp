@@ -1,10 +1,13 @@
+#[cfg(feature = "markdown_mermaid")]
 use std::hash::{DefaultHasher, Hash, Hasher};
+#[cfg(feature = "markdown_mermaid")]
 use std::sync::Arc;
 
+#[cfg(feature = "markdown_mermaid")]
 use bytes::Bytes;
-use warpui_core::assets::asset_cache::{
-    AssetCache, AssetSource, AssetState, AsyncAssetId, AsyncAssetType,
-};
+use warpui_core::assets::asset_cache::{AssetCache, AssetSource, AssetState};
+#[cfg(feature = "markdown_mermaid")]
+use warpui_core::assets::asset_cache::{AsyncAssetId, AsyncAssetType};
 use warpui_core::image_cache::ImageType;
 use warpui_core::units::{IntoPixels, Pixels};
 use warpui_core::{AppContext, SingletonEntity};
@@ -15,10 +18,13 @@ use crate::render::model::{BlockSpacing, ImageBlockConfig};
 const DEFAULT_MERMAID_HEIGHT_LINE_MULTIPLIER: f32 = 10.0;
 const FAILED_MERMAID_HEIGHT_LINE_MULTIPLIER: f32 = 2.0;
 
+#[cfg(feature = "markdown_mermaid")]
 struct MermaidDiagramAsset;
 
+#[cfg(feature = "markdown_mermaid")]
 impl AsyncAssetType for MermaidDiagramAsset {}
 
+#[cfg(feature = "markdown_mermaid")]
 pub fn mermaid_asset_source(source: &str) -> AssetSource {
     let source = source.to_string();
     let mut hasher = DefaultHasher::new();
@@ -36,6 +42,13 @@ pub fn mermaid_asset_source(source: &str) -> AssetSource {
                     .map_err(Into::into)
             })
         }),
+    }
+}
+
+#[cfg(not(feature = "markdown_mermaid"))]
+pub fn mermaid_asset_source(_source: &str) -> AssetSource {
+    AssetSource::Raw {
+        id: "mermaid-disabled".to_string(),
     }
 }
 

@@ -1,5 +1,6 @@
 use std::sync::{Arc, OnceLock};
 
+#[cfg(feature = "embedded_signatures")]
 use warp_core::channel::Channel;
 
 pub mod registry;
@@ -22,13 +23,21 @@ impl CommandRegistry {
         GLOBAL_REGISTRY
             .get_or_init(|| {
                 // TODO(wasm): Determine how to asynchronously load command signatures on wasm.
-                Arc::new(CommandRegistry::new_with_embedded_signatures())
+                #[cfg(feature = "embedded_signatures")]
+                {
+                    Arc::new(CommandRegistry::new_with_embedded_signatures())
+                }
+                #[cfg(not(feature = "embedded_signatures"))]
+                {
+                    Arc::new(CommandRegistry::empty())
+                }
             })
             .clone()
     }
 
     /// Returns a new [`CommandRegistry`] that looks up commands in the embedded
     /// set of command signatures.
+    #[cfg(feature = "embedded_signatures")]
     fn new_with_embedded_signatures() -> Self {
         let registry = CommandRegistry::new(
             |command| {
@@ -52,6 +61,7 @@ impl CommandRegistry {
     ///
     /// Ideally this would be done outside of the `warp_completer` crate, but it's not currently
     /// possible to configure the shared [`Self::global_instance`].
+    #[cfg(feature = "embedded_signatures")]
     fn register_warp_signatures(registry: &Self) {
         // We use the current instance's signature for each channel. This is not entirely accurate - for example:
         // * The user might be SSHed into a host with a different version of the CLI
@@ -96,7 +106,7 @@ impl CommandRegistry {
 // We only implement Default for this in tests, as in production, we should
 // always use the shared instance, but in tests, we might want to configure
 // instances differently.
-#[cfg(feature = "test-util")]
+#[cfg(all(feature = "test-util", feature = "embedded_signatures"))]
 impl Default for CommandRegistry {
     fn default() -> Self {
         CommandRegistry::new_with_embedded_signatures()

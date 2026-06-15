@@ -231,7 +231,7 @@ vte.workspace = true
 walkdir.workspace = true
 warp-workflows.workspace = true
 warp_assets.workspace = true
-warp_completer.workspace = true
+warp_completer = { workspace = true, default-features = false }
 warp_core.workspace = true
 warp_editor.workspace = true
 warp_graphql.workspace = true
@@ -336,7 +336,7 @@ rquickjs = { workspace = true, optional = true }
 rustls.workspace = true
 syntect = "5.0"
 sysinfo.workspace = true
-warp-command-signatures = { workspace = true, features = ["embed-signatures"] }
+warp-command-signatures = { workspace = true }
 is_executable = "1.0.1"
 gethostname = "1.1.0"
 watcher.workspace = true
@@ -524,6 +524,7 @@ default = [
     "agent_mode_pre_plan_xml",
     "command_correction_key",
     "command_corrections",
+    "command_signatures",
     "kitty_images",
     "global_ai_analytics_collection",
     "grep_tool",
@@ -874,6 +875,7 @@ warp_packs = []
 suggested_rules = []
 command_correction_key = []
 command_corrections = ["dep:command-corrections"]
+command_signatures = ["warp_completer/embedded_signatures"]
 full_source_code_embedding = []
 use_tantivy_search = []
 agent_management_popup = []

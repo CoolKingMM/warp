@@ -22881,10 +22881,7 @@ impl Workspace {
     /// Computes the list of available left panel views based on current AI settings and feature flags.
     fn compute_left_panel_views(ctx: &AppContext) -> Vec<ToolPanelView> {
         let mut views = vec![];
-        if !cfg!(feature = "oss_slim")
-            && cfg!(feature = "local_fs")
-            && *CodeSettings::as_ref(ctx).show_project_explorer.value()
-        {
+        if cfg!(feature = "local_fs") && *CodeSettings::as_ref(ctx).show_project_explorer.value() {
             views.push(ToolPanelView::ProjectExplorer);
         }
         if FeatureFlag::AgentViewConversationListView.is_enabled()

@@ -33,6 +33,9 @@ env:
   # sccache cannot cache incremental compilation; disabling it also avoids writing
   # unused incremental artifacts in CI.
   CARGO_INCREMENTAL: "0"
+  # Keep one sccache server alive for the whole job so stats are not lost when a
+  # step ends (otherwise a later step queries a fresh server reporting 0 hits).
+  SCCACHE_IDLE_TIMEOUT: "0"
 
 jobs:
   build-windows-oss:
@@ -122,11 +125,21 @@ jobs:
             '-File', $bundleScript
           ) + $bundleArgs
 
+          # Start the sccache server and reset counters up front so the post-build
+          # stats below reflect exactly this cargo build (same step = same server).
+          sccache --start-server 2>&1 | Out-Host
+          sccache --zero-stats 2>&1 | Out-Host
+
           Write-Output "Running bundle script with args: $($bundleArgs -join ' ')"
           & pwsh @commandArgs 2>&1 | Tee-Object -FilePath $buildLog
-          if ($LASTEXITCODE -ne 0) {
-            Write-Error "Bundle script failed with exit code $LASTEXITCODE. See $buildLog"
-            exit $LASTEXITCODE
+          $bundleExit = $LASTEXITCODE
+
+          Write-Output '=== sccache stats for this build (same server) ==='
+          sccache --show-stats 2>&1 | Out-Host
+
+          if ($bundleExit -ne 0) {
+            Write-Error "Bundle script failed with exit code $bundleExit. See $buildLog"
+            exit $bundleExit
           }
 
       # Surface cache hit/miss counts so the speedup is observable across runs.

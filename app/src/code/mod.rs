@@ -104,6 +104,10 @@ pub enum SaveOutcome {
     Succeeded,
 }
 
+#[cfg(feature = "file_tree")]
+pub mod file_tree;
+#[cfg(not(feature = "file_tree"))]
+#[path = "file_tree_stub.rs"]
 pub mod file_tree;
 pub mod footer;
 mod icon;
@@ -118,6 +122,7 @@ pub mod view;
 
 pub fn init(app: &mut AppContext) {
     self::view::init(app);
+    #[cfg(feature = "file_tree")]
     self::file_tree::init(app);
     #[cfg(not(target_family = "wasm"))]
     self::find_references_view::init(app);

@@ -53,7 +53,7 @@ use pathfinder_color::ColorU;
 use pathfinder_geometry::rect::RectF;
 #[cfg(feature = "local_fs")]
 use repo_metadata::repositories::DetectedRepositories;
-#[cfg(feature = "local_fs")]
+#[cfg(all(feature = "local_fs", feature = "file_tree"))]
 use repo_metadata::RemoteRepositoryIdentifier;
 #[cfg(all(target_os = "macos", feature = "crash_reporting"))]
 use sentry::protocol::{Attachment, AttachmentType};
@@ -15891,7 +15891,7 @@ impl Workspace {
                     }
                 }
             }
-            #[cfg(feature = "local_fs")]
+            #[cfg(all(feature = "local_fs", feature = "file_tree"))]
             pane_group::Event::RemoteRepoNavigated { remote_path } => {
                 let remote_id = RemoteRepositoryIdentifier::new(
                     remote_path.host_id.clone(),
@@ -15914,7 +15914,7 @@ impl Workspace {
                 // doing so would race with refresh and prevent stale
                 // DiffStateModels from being dropped.
             }
-            #[cfg(not(feature = "local_fs"))]
+            #[cfg(not(all(feature = "local_fs", feature = "file_tree")))]
             pane_group::Event::RemoteRepoNavigated { .. } => {}
             pane_group::Event::OpenChildAgentInNewTab { conversation_id } => {
                 // Move the existing child pane into a new tab so the live

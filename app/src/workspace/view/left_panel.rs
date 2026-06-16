@@ -21,7 +21,6 @@ use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::agent_conversations_model::AgentConversationsModel;
 use crate::appearance::Appearance;
 use crate::code::buffer_location::LocalOrRemotePath;
-#[cfg(feature = "local_fs")]
 use crate::code::file_tree::FileTreeEvent;
 use crate::code::file_tree::FileTreeView;
 use crate::coding_panel_enablement_state::CodingPanelEnablementState;
@@ -284,7 +283,7 @@ impl LeftPanelView {
                     .iter()
                     .filter_map(|d| d.path.to_local_path().map(|p| p.to_path_buf()))
                     .collect();
-                #[allow(unused_variables)]
+                #[cfg(feature = "file_tree")]
                 let remote_repos: Vec<repo_metadata::RemoteRepositoryIdentifier> = directories
                     .iter()
                     .filter_map(|d| match &d.path {
@@ -314,7 +313,7 @@ impl LeftPanelView {
                     active_pane_group.as_ref(ctx).left_panel_open && me.is_file_tree_active();
                 file_tree_view.update(ctx, |view, ctx| {
                     view.set_root_directories(local_directories, ctx);
-                    #[cfg(feature = "local_fs")]
+                    #[cfg(feature = "file_tree")]
                     view.set_remote_root_directories(&remote_repos, ctx);
                     view.set_has_terminal_session(has_terminal_session, ctx);
                     view.set_is_active(is_visible, ctx);
@@ -509,7 +508,7 @@ impl LeftPanelView {
 
         let file_tree_view = ctx.add_typed_action_view(FileTreeView::new);
 
-        #[cfg(feature = "local_fs")]
+        #[cfg(feature = "file_tree")]
         ctx.subscribe_to_view(&file_tree_view, |me, _, event, ctx| {
             me.handle_file_tree_event(event, ctx);
         });
@@ -631,7 +630,7 @@ impl LeftPanelView {
             .iter()
             .filter_map(|d| d.path.to_local_path().map(|p| p.to_path_buf()))
             .collect();
-        #[allow(unused_variables)]
+        #[cfg(feature = "file_tree")]
         let remote_repos: Vec<repo_metadata::RemoteRepositoryIdentifier> = active_directories
             .iter()
             .filter_map(|d| match &d.path {
@@ -660,7 +659,7 @@ impl LeftPanelView {
         let is_visible = left_panel_open && self.is_file_tree_active();
         file_tree_view.update(ctx, |view, ctx| {
             view.set_root_directories(local_directories, ctx);
-            #[cfg(feature = "local_fs")]
+            #[cfg(feature = "file_tree")]
             view.set_remote_root_directories(&remote_repos, ctx);
             view.set_has_terminal_session(has_terminal_session, ctx);
             view.set_active_file_model(active_file_model, ctx);
@@ -787,7 +786,7 @@ impl LeftPanelView {
         }
     }
 
-    #[cfg(feature = "local_fs")]
+    #[cfg(feature = "file_tree")]
     fn handle_file_tree_event(&mut self, event: &FileTreeEvent, ctx: &mut ViewContext<Self>) {
         match event {
             FileTreeEvent::FileRenamed { old_path, new_path } => {
@@ -829,6 +828,9 @@ impl LeftPanelView {
             }
         }
     }
+
+    #[cfg(not(feature = "file_tree"))]
+    fn handle_file_tree_event(&mut self, _event: &FileTreeEvent, _ctx: &mut ViewContext<Self>) {}
 }
 
 impl Entity for LeftPanelView {

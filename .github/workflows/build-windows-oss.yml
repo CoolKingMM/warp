@@ -22,6 +22,17 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # Cache first-party crate compilation across CI runs. Swatinem/rust-cache only
+  # persists dependency artifacts (it drops workspace crates before saving), so
+  # without sccache the large first-party crates (ai, app, warp_completer, warpui,
+  # graphql, ...) recompile on every run -- the dominant cost of this build.
+  # sccache content-addresses every rustc invocation and serves unchanged crates
+  # from the GitHub Actions cache. RUSTC_WRAPPER is scoped to the build step so
+  # the rest of the pipeline is unaffected.
+  SCCACHE_GHA_ENABLED: "true"
+  # sccache cannot cache incremental compilation; disabling it also avoids writing
+  # unused incremental artifacts in CI.
+  CARGO_INCREMENTAL: "0"
 
 jobs:
   build-windows-oss:
@@ -35,6 +46,11 @@ jobs:
         with:
           fetch-depth: 0
           lfs: true
+
+      # Install sccache and expose the GitHub Actions cache backend to it. Must
+      # run before the build step that sets RUSTC_WRAPPER=sccache.
+      - name: Set up sccache
+        uses: Mozilla-Actions/sccache-action@7d986dd989559c6ecdb630a3fd2557667be217ad # v0.0.9
 
       - name: Prepare Warp build environment
         uses: ./.github/actions/prepare_environment
@@ -80,6 +96,9 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           NO_LICENSES: 1
           SKIP_SETTINGS_SCHEMA: 1
+          # Route rustc through sccache only for the actual build. Scoping it here
+          # (rather than job-wide) keeps the dependency-install steps unaffected.
+          RUSTC_WRAPPER: sccache
         run: |
           $diagnosticsDir = Join-Path $env:RUNNER_TEMP 'warp-build-diagnostics'
           New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null
@@ -109,6 +128,12 @@ jobs:
             Write-Error "Bundle script failed with exit code $LASTEXITCODE. See $buildLog"
             exit $LASTEXITCODE
           }
+
+      # Surface cache hit/miss counts so the speedup is observable across runs.
+      - name: Show sccache stats
+        if: ${{ always() }}
+        shell: pwsh
+        run: sccache --show-stats
 
       - name: Stage portable artifact
         if: ${{ github.ref_type != 'tag' && github.event_name == 'workflow_dispatch' }}

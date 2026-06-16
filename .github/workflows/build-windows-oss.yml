@@ -64,32 +64,6 @@ jobs:
           cache_key: windows-oss-release
           save_cache: ${{ github.ref == 'refs/heads/master' }}
 
-      # lld-link is link.exe-compatible and materially faster on large Rust
-      # binaries. Keep this as a CI-only linker override so product code and
-      # release flags stay unchanged.
-      - name: Prefer lld-link for Windows OSS links
-        shell: pwsh
-        run: |
-          $lld = Get-Command lld-link.exe -ErrorAction SilentlyContinue
-          if (-not $lld) {
-            $llvmBin = Join-Path $env:ProgramFiles 'LLVM\bin'
-            $candidate = Join-Path $llvmBin 'lld-link.exe'
-            if (Test-Path $candidate) {
-              Add-Content -Path $env:GITHUB_PATH -Value $llvmBin
-              $lld = Get-Item $candidate
-            }
-          }
-
-          if (-not $lld) {
-            throw 'lld-link.exe was not found on the GitHub runner'
-          }
-
-          $lldPath = $lld.Source
-          if ([string]::IsNullOrWhiteSpace($lldPath)) {
-            $lldPath = $lld.FullName
-          }
-          Write-Output "Using lld-link: $lldPath"
-
       - name: Install Inno Setup
         if: ${{ github.ref_type == 'tag' }}
         shell: pwsh
@@ -134,7 +108,6 @@ jobs:
           # Route rustc through sccache only for the actual build. Scoping it here
           # (rather than job-wide) keeps the dependency-install steps unaffected.
           RUSTC_WRAPPER: sccache
-          CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER: lld-link.exe
         run: |
           $diagnosticsDir = Join-Path $env:RUNNER_TEMP 'warp-build-diagnostics'
           New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null

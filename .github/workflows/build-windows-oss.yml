@@ -87,7 +87,13 @@ jobs:
           } elseif (-not [string]::IsNullOrWhiteSpace($env:INPUT_RELEASE_TAG)) {
             $version = $env:INPUT_RELEASE_TAG
           } else {
-            $version = "v0.0.${env:GITHUB_RUN_NUMBER}"
+            # Stable placeholder for non-tag CI/dev builds. GIT_RELEASE_TAG is baked
+            # into warp_core (and lsp) via option_env!, so a per-run value such as
+            # v0.0.<run_number> changes warp_core's compiled output every run and
+            # cascades sccache cache misses through all 30+ dependent crates (ai,
+            # app, warpui, ...). A fixed value keeps the whole graph cacheable.
+            # Tag builds above still embed the real release version.
+            $version = "v0.0.0"
           }
           "release_tag=$version" >> $env:GITHUB_OUTPUT
           Write-Output "Using release tag/version: $version"

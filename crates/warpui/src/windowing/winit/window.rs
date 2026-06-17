@@ -673,6 +673,8 @@ struct Inner {
     window: Arc<winit::window::Window>,
     #[cfg(windows)]
     is_cloaked: bool,
+    #[cfg(windows)]
+    focus_on_first_show: bool,
     #[cfg_attr(not(any(target_os = "linux", target_os = "freebsd")), allow(dead_code))]
     gpu_power_preference: GPUPowerPreference,
     backend_preference: Option<wgpu::Backend>,
@@ -772,6 +774,11 @@ impl Window {
             window,
             #[cfg(windows)]
             is_cloaked: true,
+            #[cfg(windows)]
+            focus_on_first_show: !matches!(
+                window_options.style,
+                WindowStyle::NotStealFocus | WindowStyle::PositionedNoFocus
+            ),
             gpu_power_preference,
             backend_preference,
             rendering_resources: Some(RenderingResources {
@@ -855,6 +862,18 @@ impl Window {
 
         let capture_callback = self.capture_callback.borrow_mut().take();
         let window = &inner.window;
+
+        #[cfg(windows)]
+        if inner.is_cloaked {
+            // Windows can briefly show the default window background before the first frame is
+            // ready. Keep the window hidden until we are about to draw that frame, then uncloak
+            // after the frame is presented below.
+            window.set_visible(true);
+            if inner.focus_on_first_show {
+                window.focus_window();
+            }
+        }
+
         renderer.render(
             scene.as_ref(),
             resources,
@@ -1449,17 +1468,7 @@ fn create_window(
                 );
             }
 
-            window.set_visible(true);
             window.set_ime_allowed(true);
-
-            // When launching a window from windows file explorer, it isn't given focus. We're considering
-            // this a winit quirk and forcing it to be focused.
-            if !matches!(
-                window_options.style,
-                WindowStyle::NotStealFocus | WindowStyle::PositionedNoFocus
-            ) {
-                window.focus_window();
-            }
 
             let rounded_corner_result = set_window_attribute(
                 window,

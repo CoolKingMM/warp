@@ -20476,11 +20476,11 @@ impl Workspace {
         let mut tab_bar_container = Container::new(
             EventHandler::new(Clipped::new(self.render_tab_bar_hoverable(bar_contents)).finish())
                 .on_back_mouse_down(move |ctx, _app, _position| {
-                    ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
+                    ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
                     DispatchEventResult::StopPropagation
                 })
                 .on_forward_mouse_down(move |ctx, _app, _position| {
-                    ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
+                    ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
                     DispatchEventResult::StopPropagation
                 })
                 .finish(),
@@ -21314,11 +21314,11 @@ impl Workspace {
 
         let clickable_element = EventHandler::new(main_content.finish())
             .on_back_mouse_down(|ctx, _app, _position| {
-                ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
+                ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
                 DispatchEventResult::StopPropagation
             })
             .on_forward_mouse_down(|ctx, _app, _position| {
-                ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
+                ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
                 DispatchEventResult::StopPropagation
             })
             .finish();

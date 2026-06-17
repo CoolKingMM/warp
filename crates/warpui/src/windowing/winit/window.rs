@@ -865,9 +865,8 @@ impl Window {
 
         #[cfg(windows)]
         if inner.is_cloaked {
-            // Windows can briefly show the default window background before the first frame is
-            // ready. Keep the window hidden until we are about to draw that frame, then uncloak
-            // after the frame is presented below.
+            // The window is mapped while cloaked on creation. Keep this idempotent so a delayed
+            // first render cannot leave the real window hidden behind winit's event-target window.
             window.set_visible(true);
             if inner.focus_on_first_show {
                 window.focus_window();
@@ -1468,6 +1467,9 @@ fn create_window(
                 );
             }
 
+            // Keep the real window mapped while DWM-cloaked. If it stays invisible until the first
+            // render, installed launches can leave only winit's tiny event-target window visible.
+            window.set_visible(true);
             window.set_ime_allowed(true);
 
             let rounded_corner_result = set_window_attribute(

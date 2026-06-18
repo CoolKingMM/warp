@@ -1,6 +1,6 @@
 use windows::Win32::Foundation::{FALSE, HWND, TRUE};
 use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_CLOAK};
-use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
+use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNA};
 use windows_core::BOOL;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
@@ -18,7 +18,7 @@ pub trait WindowExt {
     /// "Cloaks" the window. A cloaked window is one that is invisible, but can still be drawn to.
     fn set_cloaked(&self, cloaked: bool) -> Result<(), Error>;
 
-    /// Shows the window without activating it.
+    /// Shows the window without activating it, preserving the current size and position.
     fn show_without_activating(&self) -> Result<(), Error>;
 }
 
@@ -41,7 +41,7 @@ impl WindowExt for Window {
     fn show_without_activating(&self) -> Result<(), Error> {
         let hwnd = hwnd_for_window(self)?;
         unsafe {
-            let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+            let _ = ShowWindow(hwnd, SW_SHOWNA);
         }
         Ok(())
     }

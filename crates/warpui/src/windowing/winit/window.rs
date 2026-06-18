@@ -887,17 +887,8 @@ impl Window {
 
         #[cfg(windows)]
         {
-            use crate::windowing::winit::windows::WindowExt;
-
             // Uncloak the window upon successfully drawing a frame.
             if inner.is_cloaked {
-                // The window is mapped while cloaked on creation. Keep this idempotent so a delayed
-                // first render cannot leave the real window hidden behind winit's event-target
-                // window, but do not focus it until after a frame has been presented.
-                if let Err(e) = window.show_without_activating() {
-                    log::warn!("Failed to show window without activating it: {e:#?}");
-                    window.set_visible(true);
-                }
                 match inner.window.set_cloaked(false) {
                     Ok(_) => {
                         inner.is_cloaked = false;

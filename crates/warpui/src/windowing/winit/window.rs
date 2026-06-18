@@ -887,6 +887,8 @@ impl Window {
 
         #[cfg(windows)]
         {
+            use crate::windowing::winit::windows::WindowExt;
+
             // Uncloak the window upon successfully drawing a frame.
             if inner.is_cloaked {
                 match inner.window.set_cloaked(false) {

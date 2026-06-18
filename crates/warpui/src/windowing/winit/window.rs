@@ -891,6 +891,11 @@ impl Window {
 
             // Uncloak the window upon successfully drawing a frame.
             if inner.is_cloaked {
+                // `show_without_activating` maps the Win32 HWND before the first frame without
+                // updating winit's own visibility state. Sync winit back to visible after the
+                // frame is ready so later resize/maximize handling cannot leave the real window
+                // hidden behind winit's event-target window.
+                window.set_visible(true);
                 match inner.window.set_cloaked(false) {
                     Ok(_) => {
                         inner.is_cloaked = false;

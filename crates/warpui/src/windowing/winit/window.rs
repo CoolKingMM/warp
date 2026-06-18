@@ -891,9 +891,7 @@ impl Window {
 
             // Uncloak the window upon successfully drawing a frame.
             if inner.is_cloaked {
-                // `show_without_activating` maps the Win32 HWND before the first frame without
-                // updating winit's own visibility state. Sync winit back to visible after the
-                // frame is ready so later resize/maximize handling cannot leave the real window
+                // Keep this idempotent so a delayed first render cannot leave the real window
                 // hidden behind winit's event-target window.
                 window.set_visible(true);
                 match inner.window.set_cloaked(false) {
@@ -1345,6 +1343,7 @@ fn create_window(
         // the window to be invisible to ensure the window doesn't flash in between the window being
         // created and the window being marked as cloaked.
         window_attributes.visible = false;
+        window_attributes.active = false;
 
         let icon = winit::window::Icon::from_resource(IDI_ICON, None);
         window_attributes.window_icon = icon.as_ref().ok().cloned();
@@ -1465,12 +1464,9 @@ fn create_window(
                 );
             }
 
-            // Keep the real window mapped while DWM-cloaked, but avoid activating it until the
-            // first frame is ready.
-            if let Err(e) = window.show_without_activating() {
-                log::warn!("Failed to show window without activating it: {e:#?}");
-                window.set_visible(true);
-            }
+            // Keep winit and Win32 visibility in sync while DWM-cloaked. The window is activated
+            // after the first frame only if the style allows it.
+            window.set_visible(true);
             window.set_ime_allowed(true);
 
             let rounded_corner_result = set_window_attribute(

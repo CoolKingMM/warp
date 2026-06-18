@@ -863,16 +863,6 @@ impl Window {
         let capture_callback = self.capture_callback.borrow_mut().take();
         let window = &inner.window;
 
-        #[cfg(windows)]
-        if inner.is_cloaked {
-            // The window is mapped while cloaked on creation. Keep this idempotent so a delayed
-            // first render cannot leave the real window hidden behind winit's event-target window.
-            window.set_visible(true);
-            if inner.focus_on_first_show {
-                window.focus_window();
-            }
-        }
-
         renderer.render(
             scene.as_ref(),
             resources,
@@ -901,9 +891,19 @@ impl Window {
 
             // Uncloak the window upon successfully drawing a frame.
             if inner.is_cloaked {
+                // The window is mapped while cloaked on creation. Keep this idempotent so a delayed
+                // first render cannot leave the real window hidden behind winit's event-target
+                // window, but do not focus it until after a frame has been presented.
+                if let Err(e) = window.show_without_activating() {
+                    log::warn!("Failed to show window without activating it: {e:#?}");
+                    window.set_visible(true);
+                }
                 match inner.window.set_cloaked(false) {
                     Ok(_) => {
                         inner.is_cloaked = false;
+                        if inner.focus_on_first_show {
+                            window.focus_window();
+                        }
                     }
                     Err(e) => {
                         log::warn!("Failed to uncloak window: {e:#?}");
@@ -1467,9 +1467,12 @@ fn create_window(
                 );
             }
 
-            // Keep the real window mapped while DWM-cloaked. If it stays invisible until the first
-            // render, installed launches can leave only winit's tiny event-target window visible.
-            window.set_visible(true);
+            // Keep the real window mapped while DWM-cloaked, but avoid activating it until the
+            // first frame is ready.
+            if let Err(e) = window.show_without_activating() {
+                log::warn!("Failed to show window without activating it: {e:#?}");
+                window.set_visible(true);
+            }
             window.set_ime_allowed(true);
 
             let rounded_corner_result = set_window_attribute(

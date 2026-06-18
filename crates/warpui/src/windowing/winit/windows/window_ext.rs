@@ -1,5 +1,6 @@
 use windows::Win32::Foundation::{FALSE, HWND, TRUE};
 use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_CLOAK};
+use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
 use windows_core::BOOL;
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
@@ -16,21 +17,18 @@ pub enum Error {
 pub trait WindowExt {
     /// "Cloaks" the window. A cloaked window is one that is invisible, but can still be drawn to.
     fn set_cloaked(&self, cloaked: bool) -> Result<(), Error>;
+
+    /// Shows the window without activating it.
+    fn show_without_activating(&self) -> Result<(), Error>;
 }
 
 impl WindowExt for Window {
     fn set_cloaked(&self, cloaked: bool) -> Result<(), Error> {
-        let Ok(RawWindowHandle::Win32(handle)) = self
-            .window_handle()
-            .map(|window_handle| window_handle.as_raw())
-        else {
-            return Err(Error::InvalidWindowHandle);
-        };
-
+        let hwnd = hwnd_for_window(self)?;
         let value = if cloaked { TRUE } else { FALSE };
         unsafe {
             DwmSetWindowAttribute(
-                HWND(handle.hwnd.get() as _),
+                hwnd,
                 DWMWA_CLOAK,
                 &value as *const BOOL as *const _,
                 size_of::<BOOL>() as u32,
@@ -39,4 +37,23 @@ impl WindowExt for Window {
 
         Ok(())
     }
+
+    fn show_without_activating(&self) -> Result<(), Error> {
+        let hwnd = hwnd_for_window(self)?;
+        unsafe {
+            let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+        }
+        Ok(())
+    }
+}
+
+fn hwnd_for_window(window: &Window) -> Result<HWND, Error> {
+    let Ok(RawWindowHandle::Win32(handle)) = window
+        .window_handle()
+        .map(|window_handle| window_handle.as_raw())
+    else {
+        return Err(Error::InvalidWindowHandle);
+    };
+
+    Ok(HWND(handle.hwnd.get() as _))
 }

@@ -7296,6 +7296,10 @@ fn test_terminal_only_escape_locks_shell_mode() {
 #[test]
 fn test_page_up_and_down_scroll_terminal_from_prompt() {
     App::test((), |mut app| async move {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         initialize_app(&mut app);
 
         let terminal = add_window_with_bootstrapped_terminal(&mut app, None, None).await;
@@ -7349,7 +7353,7 @@ fn test_page_up_and_down_scroll_terminal_from_prompt() {
 }
 
 #[test]
-fn test_page_keys_from_prompt_reach_long_running_process() {
+fn test_page_keys_from_prompt_use_project_terminal_switching_in_oss_slim() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
 
@@ -7381,10 +7385,14 @@ fn test_page_keys_from_prompt_reach_long_running_process() {
             editor.handle_action(&EditorAction::PageDown, ctx);
         });
 
-        assert_eq!(
-            *pty_writes.borrow(),
-            vec![b"\x1b[5~".to_vec(), b"\x1b[6~".to_vec()]
-        );
+        if cfg!(feature = "oss_slim") {
+            assert!(pty_writes.borrow().is_empty());
+        } else {
+            assert_eq!(
+                *pty_writes.borrow(),
+                vec![b"\x1b[5~".to_vec(), b"\x1b[6~".to_vec()]
+            );
+        }
     });
 }
 
@@ -7439,6 +7447,10 @@ fn test_page_up_and_down_do_not_scroll_terminal_when_suggestions_are_visible() {
 #[test]
 fn test_page_up_and_down_scroll_terminal_with_vim_mode_enabled() {
     App::test((), |mut app| async move {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         initialize_app(&mut app);
 
         let terminal = add_window_with_bootstrapped_terminal(&mut app, None, None).await;

@@ -579,7 +579,8 @@ pub fn init(app: &mut AppContext) {
                 & !id!("Workspace_PaneDragging"),
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())
-        .with_enabled(|| cfg!(feature = "oss_slim")),
+        .with_enabled(|| cfg!(feature = "oss_slim"))
+        .with_linux_or_windows_key_binding("pageup"),
         EditableBinding::new(
             "workspace:focus_next_terminal_in_project",
             "Activate next project terminal",
@@ -593,7 +594,8 @@ pub fn init(app: &mut AppContext) {
                 & !id!("Workspace_PaneDragging"),
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())
-        .with_enabled(|| cfg!(feature = "oss_slim")),
+        .with_enabled(|| cfg!(feature = "oss_slim"))
+        .with_linux_or_windows_key_binding("pagedown"),
         EditableBinding::new(
             "workspace:activate_prev_tab",
             "Activate previous tab",

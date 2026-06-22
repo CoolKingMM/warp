@@ -247,7 +247,6 @@ use crate::ai::facts::manager::AIFactManager;
 use crate::ai::harness_availability::HarnessAvailabilityModel;
 use crate::ai::llms::LLMPreferences;
 use crate::ai::mcp::{MCPGalleryManager, TemplatableMCPServerManager};
-#[cfg(not(feature = "oss_slim"))]
 use crate::ai::outline::RepoOutlines;
 use crate::ai::restored_conversations::RestoredAgentConversations;
 use crate::ai::skills::SkillManager;
@@ -1870,17 +1869,22 @@ pub(crate) fn initialize_app(
             ai::blocklist::orchestration_event_streamer::OrchestrationEventStreamer::new,
         );
 
-        if launch_mode.supports_indexing() {
-            ctx.add_singleton_model(RepoOutlines::new);
-        } else {
-            ctx.add_singleton_model(|ctx| RepoOutlines::new_with_indexing_enabled(false, ctx));
-        }
         ctx.add_singleton_model(|ctx| {
             warp_core::sync_queue::SyncQueue::<SyncTask>::new_with_rate_limit(
                 &ctx.background_executor(),
                 Some(DEFAULT_SYNC_REQUESTS_PER_MIN),
             )
         });
+    }
+    #[cfg(feature = "oss_slim")]
+    ctx.add_singleton_model(|ctx| RepoOutlines::new_with_indexing_enabled(false, ctx));
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        if launch_mode.supports_indexing() {
+            ctx.add_singleton_model(RepoOutlines::new);
+        } else {
+            ctx.add_singleton_model(|ctx| RepoOutlines::new_with_indexing_enabled(false, ctx));
+        }
     }
 
     ctx.add_singleton_model(|_| UserProfiles::new(restored_user_profiles));

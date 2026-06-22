@@ -91,6 +91,7 @@ use crate::terminal::{grid_renderer, SizeInfo};
 use crate::themes::theme::{Fill, WarpTheme};
 use crate::ui_components::{self, icons as UIIcon};
 use crate::util::color::Opacity;
+use crate::workspace::WorkspaceAction;
 
 /// The number of pixels at the bottom of padding where selection scrolling is performed.
 const BOTTOM_VERTICAL_MARGIN: f32 = 10.0;
@@ -4587,6 +4588,17 @@ impl Element for BlockListElement {
                 // intermediate view yet.
                 if keystroke.normalized() == "ctrl-d" {
                     return self.ctrl_d(ctx);
+                }
+
+                if cfg!(feature = "oss_slim") {
+                    let normalized = keystroke.normalized();
+                    if normalized == "pageup" {
+                        ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
+                        return true;
+                    } else if normalized == "pagedown" {
+                        ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
+                        return true;
+                    }
                 }
 
                 let in_long_running_command =

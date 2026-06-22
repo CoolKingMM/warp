@@ -4590,17 +4590,6 @@ impl Element for BlockListElement {
                     return self.ctrl_d(ctx);
                 }
 
-                if cfg!(feature = "oss_slim") {
-                    let normalized = keystroke.normalized();
-                    if normalized == "pageup" {
-                        ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
-                        return true;
-                    } else if normalized == "pagedown" {
-                        ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
-                        return true;
-                    }
-                }
-
                 let in_long_running_command =
                     self.model.lock().block_list().active_block().is_executing();
                 if !*is_composing

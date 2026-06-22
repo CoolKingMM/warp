@@ -48,7 +48,6 @@ use crate::terminal::view::{
     ActiveSessionState, TerminalAction, TerminalEditor, TerminalViewRenderContext,
 };
 use crate::terminal::{grid_renderer, heights_approx_eq, SizeInfo, TerminalModel};
-use crate::workspace::WorkspaceAction;
 
 const CLI_SUBAGENT_HORIZONTAL_MARGIN: f32 = 8.;
 const CLI_SUBAGENT_VERTICAL_MARGIN: f32 = 8.;
@@ -866,16 +865,6 @@ impl Element for AltScreenElement {
                     || (*is_composing && !handle_keystroke_despite_composing(keystroke))
                 {
                     return false;
-                }
-                if cfg!(feature = "oss_slim") {
-                    let normalized = keystroke.normalized();
-                    if normalized == "pageup" {
-                        ctx.dispatch_typed_action(WorkspaceAction::FocusPrevTerminalInProject);
-                        return true;
-                    } else if normalized == "pagedown" {
-                        ctx.dispatch_typed_action(WorkspaceAction::FocusNextTerminalInProject);
-                        return true;
-                    }
                 }
                 if let Some(escape_sequence) = (KeystrokeWithDetails {
                     keystroke,

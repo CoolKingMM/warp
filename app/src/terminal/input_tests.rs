@@ -7349,7 +7349,7 @@ fn test_page_up_and_down_scroll_terminal_from_prompt() {
 }
 
 #[test]
-fn test_page_up_and_down_from_prompt_write_to_pty_when_command_is_long_running() {
+fn test_page_keys_from_prompt_use_project_terminal_switching_in_oss_slim() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);
 
@@ -7381,10 +7381,14 @@ fn test_page_up_and_down_from_prompt_write_to_pty_when_command_is_long_running()
             editor.handle_action(&EditorAction::PageDown, ctx);
         });
 
-        assert_eq!(
-            *pty_writes.borrow(),
-            vec![b"\x1b[5~".to_vec(), b"\x1b[6~".to_vec()]
-        );
+        if cfg!(feature = "oss_slim") {
+            assert!(pty_writes.borrow().is_empty());
+        } else {
+            assert_eq!(
+                *pty_writes.borrow(),
+                vec![b"\x1b[5~".to_vec(), b"\x1b[6~".to_vec()]
+            );
+        }
     });
 }
 

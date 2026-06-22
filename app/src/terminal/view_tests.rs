@@ -142,7 +142,7 @@ fn focus_reporting_writes_focus_events_in_normal_screen() {
 }
 
 #[test]
-fn page_keys_write_to_pty_when_command_is_long_running() {
+fn page_keys_respect_oss_slim_project_terminal_switching_when_command_is_long_running() {
     App::test((), |mut app| async move {
         initialize_app_for_terminal_view(&mut app);
         let terminal = add_window_with_terminal(&mut app, None);
@@ -163,10 +163,14 @@ fn page_keys_write_to_pty_when_command_is_long_running() {
             view.handle_action(&TerminalAction::PageDown, ctx);
         });
 
-        assert_eq!(
-            *pty_writes.borrow(),
-            vec![b"\x1b[5~".to_vec(), b"\x1b[6~".to_vec()]
-        );
+        if cfg!(feature = "oss_slim") {
+            assert!(pty_writes.borrow().is_empty());
+        } else {
+            assert_eq!(
+                *pty_writes.borrow(),
+                vec![b"\x1b[5~".to_vec(), b"\x1b[6~".to_vec()]
+            );
+        }
     })
 }
 

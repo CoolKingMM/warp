@@ -22557,26 +22557,26 @@ impl TerminalView {
     }
 
     fn page_up(&mut self, ctx: &mut ViewContext<Self>) {
-        if self.active_block_or_alt_screen_should_receive_page_keys() {
+        if cfg!(feature = "oss_slim") {
+            ctx.dispatch_typed_action(&WorkspaceAction::FocusPrevTerminalInProject);
+        } else if self.active_block_or_alt_screen_should_receive_page_keys() {
             // Note: We explicitly use the CSI prefix, as the terminal we are impersonating
             // (`xterm-256color`) has the escape sequence for page up defined with that prefix
             let sequence = EscCodes::build_escape_sequence_with_c1(C1::CSI, EscCodes::PAGE_UP);
             self.write_user_bytes_to_pty(sequence, ctx);
-        } else if cfg!(feature = "oss_slim") {
-            ctx.dispatch_typed_action(&WorkspaceAction::FocusPrevTerminalInProject);
         } else {
             self.update_scroll_position_locking(ScrollPositionUpdate::AfterPageUp, ctx);
         }
     }
 
     fn page_down(&mut self, ctx: &mut ViewContext<Self>) {
-        if self.active_block_or_alt_screen_should_receive_page_keys() {
+        if cfg!(feature = "oss_slim") {
+            ctx.dispatch_typed_action(&WorkspaceAction::FocusNextTerminalInProject);
+        } else if self.active_block_or_alt_screen_should_receive_page_keys() {
             // Note: We explicitly use the CSI prefix, as the terminal we are impersonating
             // (`xterm-256color`) has the escape sequence for page down defined with that prefix
             let sequence = EscCodes::build_escape_sequence_with_c1(C1::CSI, EscCodes::PAGE_DOWN);
             self.write_user_bytes_to_pty(sequence, ctx);
-        } else if cfg!(feature = "oss_slim") {
-            ctx.dispatch_typed_action(&WorkspaceAction::FocusNextTerminalInProject);
         } else {
             self.update_scroll_position_locking(ScrollPositionUpdate::AfterPageDown, ctx);
         }

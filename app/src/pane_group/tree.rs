@@ -513,9 +513,44 @@ impl PaneData {
     }
 
     pub fn render(&self, theme: &WarpTheme, app: &AppContext) -> Box<dyn Element> {
+        self.render_with_hidden_panes(theme, &self.hidden_panes, app)
+    }
+
+    pub fn render_with_additional_hidden_panes(
+        &self,
+        theme: &WarpTheme,
+        additional_hidden_panes: &[PaneId],
+        app: &AppContext,
+    ) -> Box<dyn Element> {
+        if additional_hidden_panes.is_empty() {
+            return self.render(theme, app);
+        }
+
+        let mut hidden_panes = self.hidden_panes.clone();
+        for pane_id in additional_hidden_panes {
+            if !hidden_panes
+                .iter()
+                .any(|hidden_pane| hidden_pane.pane_id == *pane_id)
+            {
+                hidden_panes.push(HiddenPane {
+                    pane_id: *pane_id,
+                    reason: HiddenPaneReason::FromJob,
+                });
+            }
+        }
+
+        self.render_with_hidden_panes(theme, &hidden_panes, app)
+    }
+
+    fn render_with_hidden_panes(
+        &self,
+        theme: &WarpTheme,
+        hidden_panes: &[HiddenPane],
+        app: &AppContext,
+    ) -> Box<dyn Element> {
         match &self.root {
             PaneNode::Leaf(pane) => pane.render(app),
-            PaneNode::Branch(node) => node.render(theme, &self.hidden_panes, app),
+            PaneNode::Branch(node) => node.render(theme, hidden_panes, app),
         }
     }
 
@@ -719,7 +754,7 @@ impl PaneNode {
     fn render(
         &self,
         theme: &WarpTheme,
-        hidden_panes: &Vec<HiddenPane>,
+        hidden_panes: &[HiddenPane],
         app: &AppContext,
     ) -> Box<dyn Element> {
         match self {
@@ -1055,7 +1090,7 @@ impl PaneBranch {
     fn render(
         &self,
         theme: &WarpTheme,
-        hidden_panes: &Vec<HiddenPane>,
+        hidden_panes: &[HiddenPane],
         app: &AppContext,
     ) -> Box<dyn Element> {
         let mut parent = match self.axis {

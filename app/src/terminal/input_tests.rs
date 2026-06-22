@@ -7349,6 +7349,46 @@ fn test_page_up_and_down_scroll_terminal_from_prompt() {
 }
 
 #[test]
+fn test_page_up_and_down_from_prompt_write_to_pty_when_command_is_long_running() {
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+
+        let terminal = add_window_with_bootstrapped_terminal(&mut app, None, None).await;
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let crate::terminal::view::Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        let editor = terminal.read(&app, |terminal, ctx| {
+            terminal.input().as_ref(ctx).editor().clone()
+        });
+
+        terminal.update(&mut app, |terminal, _| {
+            terminal
+                .model
+                .lock()
+                .simulate_long_running_block("codex", "");
+        });
+
+        editor.update(&mut app, |editor, ctx| {
+            editor.handle_action(&EditorAction::PageUp, ctx);
+            editor.handle_action(&EditorAction::PageDown, ctx);
+        });
+
+        assert_eq!(
+            *pty_writes.borrow(),
+            vec![b"\x1b[5~".to_vec(), b"\x1b[6~".to_vec()]
+        );
+    });
+}
+
+#[test]
 fn test_page_up_and_down_do_not_scroll_terminal_when_suggestions_are_visible() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);

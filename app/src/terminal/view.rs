@@ -22557,35 +22557,35 @@ impl TerminalView {
     }
 
     fn page_up(&mut self, ctx: &mut ViewContext<Self>) {
-        if cfg!(feature = "oss_slim") {
-            ctx.dispatch_typed_action(&WorkspaceAction::FocusPrevTerminalInProject);
-            return;
-        }
-
-        if self.is_long_running() {
+        if self.active_block_or_alt_screen_should_receive_page_keys() {
             // Note: We explicitly use the CSI prefix, as the terminal we are impersonating
             // (`xterm-256color`) has the escape sequence for page up defined with that prefix
             let sequence = EscCodes::build_escape_sequence_with_c1(C1::CSI, EscCodes::PAGE_UP);
             self.write_user_bytes_to_pty(sequence, ctx);
+        } else if cfg!(feature = "oss_slim") {
+            ctx.dispatch_typed_action(&WorkspaceAction::FocusPrevTerminalInProject);
         } else {
             self.update_scroll_position_locking(ScrollPositionUpdate::AfterPageUp, ctx);
         }
     }
 
     fn page_down(&mut self, ctx: &mut ViewContext<Self>) {
-        if cfg!(feature = "oss_slim") {
-            ctx.dispatch_typed_action(&WorkspaceAction::FocusNextTerminalInProject);
-            return;
-        }
-
-        if self.is_long_running() {
+        if self.active_block_or_alt_screen_should_receive_page_keys() {
             // Note: We explicitly use the CSI prefix, as the terminal we are impersonating
             // (`xterm-256color`) has the escape sequence for page down defined with that prefix
             let sequence = EscCodes::build_escape_sequence_with_c1(C1::CSI, EscCodes::PAGE_DOWN);
             self.write_user_bytes_to_pty(sequence, ctx);
+        } else if cfg!(feature = "oss_slim") {
+            ctx.dispatch_typed_action(&WorkspaceAction::FocusNextTerminalInProject);
         } else {
             self.update_scroll_position_locking(ScrollPositionUpdate::AfterPageDown, ctx);
         }
+    }
+
+    fn active_block_or_alt_screen_should_receive_page_keys(&self) -> bool {
+        let model = self.model.lock();
+        model.block_list().active_block().is_active_and_long_running()
+            || model.is_alt_screen_active()
     }
 
     fn move_home(&mut self, ctx: &mut ViewContext<Self>) {

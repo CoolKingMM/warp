@@ -8834,7 +8834,10 @@ impl Input {
 
     // TODO - Implement PageUp functionality for input suggestions menu
     fn editor_page_up(&mut self, ctx: &mut ViewContext<Self>) {
-        if cfg!(feature = "oss_slim") {
+        if cfg!(feature = "oss_slim")
+            && !self.active_block_or_alt_screen_should_receive_page_keys()
+            && !self.suggestions_mode_model.as_ref(ctx).is_visible()
+        {
             ctx.dispatch_typed_action(&WorkspaceAction::FocusPrevTerminalInProject);
             return;
         }
@@ -9176,7 +9179,10 @@ impl Input {
 
     // TODO - Implement PageDown functionality for input suggestions menu
     fn editor_page_down(&mut self, ctx: &mut ViewContext<Self>) {
-        if cfg!(feature = "oss_slim") {
+        if cfg!(feature = "oss_slim")
+            && !self.active_block_or_alt_screen_should_receive_page_keys()
+            && !self.suggestions_mode_model.as_ref(ctx).is_visible()
+        {
             ctx.dispatch_typed_action(&WorkspaceAction::FocusNextTerminalInProject);
             return;
         }
@@ -9194,6 +9200,12 @@ impl Input {
         } else {
             ctx.emit(Event::PageDown);
         }
+    }
+
+    fn active_block_or_alt_screen_should_receive_page_keys(&self) -> bool {
+        let model = self.model.lock();
+        model.block_list().active_block().is_active_and_long_running()
+            || model.is_alt_screen_active()
     }
 
     fn maybe_generate_autosuggestion(&mut self, ctx: &mut ViewContext<Self>) {

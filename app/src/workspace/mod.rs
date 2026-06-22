@@ -575,6 +575,8 @@ pub fn init(app: &mut AppContext) {
             id!("Workspace")
                 & (id!("Terminal") | id!("Input"))
                 & !id!("EditorFocused")
+                & !id!("LongRunningCommand")
+                & !id!("AltScreen")
                 & !id!("Workspace_PaneDragging"),
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())
@@ -589,6 +591,8 @@ pub fn init(app: &mut AppContext) {
             id!("Workspace")
                 & (id!("Terminal") | id!("Input"))
                 & !id!("EditorFocused")
+                & !id!("LongRunningCommand")
+                & !id!("AltScreen")
                 & !id!("Workspace_PaneDragging"),
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())

@@ -141,6 +141,35 @@ fn focus_reporting_writes_focus_events_in_normal_screen() {
     })
 }
 
+#[test]
+fn page_keys_write_to_pty_when_command_is_long_running() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let terminal = add_window_with_terminal(&mut app, None);
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        terminal.update(&mut app, |view, ctx| {
+            view.model.lock().simulate_long_running_block("codex", "");
+            view.handle_action(&TerminalAction::PageUp, ctx);
+            view.handle_action(&TerminalAction::PageDown, ctx);
+        });
+
+        assert_eq!(
+            *pty_writes.borrow(),
+            vec![b"\x1b[5~".to_vec(), b"\x1b[6~".to_vec()]
+        );
+    })
+}
+
 fn input_operations_for_buffer_content(app: &mut App, content: &str) -> Vec<CrdtOperation> {
     let terminal = add_window_with_terminal(app, None);
     terminal.update(app, |view, ctx| {

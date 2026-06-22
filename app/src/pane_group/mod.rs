@@ -8035,12 +8035,51 @@ impl View for PaneGroup {
         }
 
         let focused_pane_id = self.focused_pane_id(app);
-        let show_single_project_terminal = cfg!(feature = "oss_slim")
-            && focused_pane_id.is_terminal_pane()
-            && self.visible_terminal_pane_ids(app).len() > 1;
+        let visible_terminal_pane_ids = self.visible_terminal_pane_ids(app);
+        let has_visible_non_terminal_pane = cfg!(feature = "oss_slim")
+            && self
+                .visible_pane_ids()
+                .into_iter()
+                .any(|pane_id| !pane_id.is_terminal_pane());
+        let project_terminal_to_show = if cfg!(feature = "oss_slim")
+            && visible_terminal_pane_ids.len() > 1
+        {
+            focused_pane_id
+                .is_terminal_pane()
+                .then_some(focused_pane_id)
+                .or_else(|| {
+                    self.active_session_id(app)
+                        .map(Into::into)
+                        .filter(|pane_id| visible_terminal_pane_ids.contains(pane_id))
+                })
+                .or_else(|| visible_terminal_pane_ids.first().copied())
+        } else {
+            None
+        };
 
-        let main_content = if self.is_focused_pane_maximized(app) || show_single_project_terminal {
+        let main_content = if self.is_focused_pane_maximized(app)
+            || (project_terminal_to_show == Some(focused_pane_id) && !has_visible_non_terminal_pane)
+        {
             focused_pane_id.render(app)
+        } else if let Some(project_terminal_to_show) = project_terminal_to_show {
+            let hidden_terminal_panes = visible_terminal_pane_ids
+                .into_iter()
+                .filter(|pane_id| *pane_id != project_terminal_to_show)
+                .collect::<Vec<_>>();
+            EventHandler::new(self.panes.render_with_additional_hidden_panes(
+                appearance.theme(),
+                &hidden_terminal_panes,
+                app,
+            ))
+            .on_mouse_dragged(move |ctx, _, position| {
+                ctx.dispatch_typed_action(PaneGroupAction::ResizeMove(position));
+                DispatchEventResult::StopPropagation
+            })
+            .on_left_mouse_up(move |ctx, _, _| {
+                ctx.dispatch_typed_action(PaneGroupAction::EndResizing);
+                DispatchEventResult::StopPropagation
+            })
+            .finish()
         } else {
             EventHandler::new(self.panes.render(appearance.theme(), app))
                 .on_mouse_dragged(move |ctx, _, position| {

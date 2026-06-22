@@ -574,9 +574,8 @@ pub fn init(app: &mut AppContext) {
         .with_context_predicate(
             id!("Workspace")
                 & (id!("Terminal") | id!("Input"))
-                & !id!("EditorFocused")
+                & (!id!("EditorFocused") | id!("AltScreen"))
                 & !id!("LongRunningCommand")
-                & !id!("AltScreen")
                 & !id!("Workspace_PaneDragging"),
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())
@@ -590,9 +589,8 @@ pub fn init(app: &mut AppContext) {
         .with_context_predicate(
             id!("Workspace")
                 & (id!("Terminal") | id!("Input"))
-                & !id!("EditorFocused")
+                & (!id!("EditorFocused") | id!("AltScreen"))
                 & !id!("LongRunningCommand")
-                & !id!("AltScreen")
                 & !id!("Workspace_PaneDragging"),
         )
         .with_group(bindings::BindingGroup::Navigation.as_str())

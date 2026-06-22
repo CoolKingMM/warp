@@ -134,13 +134,16 @@ use ::ai::index::full_source_code_embedding::manager::{
 };
 #[cfg(feature = "local_fs")]
 use ::ai::index::full_source_code_embedding::SnapshotStorage;
+#[cfg(not(feature = "oss_slim"))]
 use ::ai::index::full_source_code_embedding::SyncTask;
+#[cfg(not(feature = "oss_slim"))]
 use ::ai::index::DEFAULT_SYNC_REQUESTS_PER_MIN;
 use ::ai::project_context::model::ProjectContextModel;
 pub use ai::agent::todos::AIAgentTodoList;
 pub use ai::agent::{AIAgentActionResultType, FileEdit, TodoOperation};
 use ai::agent_conversations_model::AgentConversationsModel;
 use ai::agent_management::AgentNotificationsModel;
+#[cfg(not(feature = "oss_slim"))]
 use ai::ambient_agents::scheduled::ScheduledAgentManager;
 use ai::blocklist::{BlocklistAIHistoryModel, BlocklistAIPermissions};
 use ai::execution_profiles::editor::ExecutionProfileEditorManager;
@@ -237,12 +240,14 @@ use workspace::sync_inputs::SyncedInputState;
 use self::features::FeatureFlag;
 use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::ambient_agents::github_auth_notifier::GitHubAuthNotifier;
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::connected_self_hosted_workers::ConnectedSelfHostedWorkersModel;
 use crate::ai::document::ai_document_model::AIDocumentModel;
 use crate::ai::facts::manager::AIFactManager;
 use crate::ai::harness_availability::HarnessAvailabilityModel;
 use crate::ai::llms::LLMPreferences;
 use crate::ai::mcp::{MCPGalleryManager, TemplatableMCPServerManager};
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::outline::RepoOutlines;
 use crate::ai::restored_conversations::RestoredAgentConversations;
 use crate::ai::skills::SkillManager;
@@ -1853,25 +1858,30 @@ pub(crate) fn initialize_app(
     ctx.add_singleton_model(|_| ActiveAgentViewsModel::new());
     ctx.add_singleton_model(AgentNotificationsModel::new);
     ctx.add_singleton_model(BlocklistAIPermissions::new);
-    ctx.add_singleton_model(ai::blocklist::orchestration_events::OrchestrationEventService::new);
-    ctx.add_singleton_model(
-        ai::blocklist::local_agent_task_sync_model::LocalAgentTaskSyncModel::new,
-    );
-    ctx.add_singleton_model(
-        ai::blocklist::orchestration_event_streamer::OrchestrationEventStreamer::new,
-    );
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        ctx.add_singleton_model(
+            ai::blocklist::orchestration_events::OrchestrationEventService::new,
+        );
+        ctx.add_singleton_model(
+            ai::blocklist::local_agent_task_sync_model::LocalAgentTaskSyncModel::new,
+        );
+        ctx.add_singleton_model(
+            ai::blocklist::orchestration_event_streamer::OrchestrationEventStreamer::new,
+        );
 
-    if launch_mode.supports_indexing() {
-        ctx.add_singleton_model(RepoOutlines::new);
-    } else {
-        ctx.add_singleton_model(|ctx| RepoOutlines::new_with_indexing_enabled(false, ctx));
+        if launch_mode.supports_indexing() {
+            ctx.add_singleton_model(RepoOutlines::new);
+        } else {
+            ctx.add_singleton_model(|ctx| RepoOutlines::new_with_indexing_enabled(false, ctx));
+        }
+        ctx.add_singleton_model(|ctx| {
+            warp_core::sync_queue::SyncQueue::<SyncTask>::new_with_rate_limit(
+                &ctx.background_executor(),
+                Some(DEFAULT_SYNC_REQUESTS_PER_MIN),
+            )
+        });
     }
-    ctx.add_singleton_model(|ctx| {
-        warp_core::sync_queue::SyncQueue::<SyncTask>::new_with_rate_limit(
-            &ctx.background_executor(),
-            Some(DEFAULT_SYNC_REQUESTS_PER_MIN),
-        )
-    });
 
     ctx.add_singleton_model(|_| UserProfiles::new(restored_user_profiles));
 
@@ -2008,8 +2018,11 @@ pub(crate) fn initialize_app(
     ctx.add_singleton_model(EnvVarCollectionManager::new);
     ctx.add_singleton_model(WorkflowManager::new);
 
-    if !cfg!(feature = "oss_slim") && FeatureFlag::ScheduledAmbientAgents.is_enabled() {
-        ctx.add_singleton_model(ScheduledAgentManager::new);
+    #[cfg(not(feature = "oss_slim"))]
+    {
+        if FeatureFlag::ScheduledAmbientAgents.is_enabled() {
+            ctx.add_singleton_model(ScheduledAgentManager::new);
+        }
     }
 
     AutoupdateState::register(ctx, server_api.clone());
@@ -2018,6 +2031,7 @@ pub(crate) fn initialize_app(
 
     ctx.add_singleton_model(LLMPreferences::new);
     ctx.add_singleton_model(HarnessAvailabilityModel::new);
+    #[cfg(not(feature = "oss_slim"))]
     ctx.add_singleton_model(ConnectedSelfHostedWorkersModel::new);
 
     #[cfg(not(feature = "oss_slim"))]

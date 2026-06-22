@@ -2,8 +2,72 @@ use warp_graphql::ai::{AgentTaskState, PlatformErrorCode};
 
 use super::terminal::ShareSessionError;
 use super::AgentDriverError;
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::blocklist::local_agent_task_sync_model::classify_renderable_error;
+#[cfg(feature = "oss_slim")]
+use crate::ai::agent::RenderableAIError;
 use crate::server::server_api::ai::TaskStatusUpdate;
+
+#[cfg(feature = "oss_slim")]
+fn classify_renderable_error(
+    error: &RenderableAIError,
+) -> (AgentTaskState, Option<TaskStatusUpdate>) {
+    match error {
+        RenderableAIError::QuotaLimit {
+            user_display_message,
+        } => (
+            AgentTaskState::Failed,
+            Some(TaskStatusUpdate::with_error_code(
+                user_display_message.as_deref().unwrap_or(
+                    "Your team has run out of credits. Purchase more credits to continue.",
+                ),
+                PlatformErrorCode::InsufficientCredits,
+            )),
+        ),
+        RenderableAIError::ServerOverloaded => (
+            AgentTaskState::Error,
+            Some(TaskStatusUpdate::with_error_code(
+                "Warp is temporarily overloaded. Please try again shortly.",
+                PlatformErrorCode::ResourceUnavailable,
+            )),
+        ),
+        RenderableAIError::InternalWarpError => (
+            AgentTaskState::Error,
+            Some(TaskStatusUpdate::with_error_code(
+                "An internal error occurred during the conversation. Please try again.",
+                PlatformErrorCode::InternalError,
+            )),
+        ),
+        RenderableAIError::ContextWindowExceeded(msg) => (
+            AgentTaskState::Failed,
+            Some(TaskStatusUpdate::with_error_code(
+                format!("Context window exceeded: {msg}"),
+                PlatformErrorCode::InternalError,
+            )),
+        ),
+        RenderableAIError::InvalidApiKey { provider, .. } => (
+            AgentTaskState::Failed,
+            Some(TaskStatusUpdate::with_error_code(
+                format!("Invalid API key for {provider}. Update your API key in settings."),
+                PlatformErrorCode::AuthenticationRequired,
+            )),
+        ),
+        RenderableAIError::AwsBedrockCredentialsExpiredOrInvalid { model_name } => (
+            AgentTaskState::Failed,
+            Some(TaskStatusUpdate::with_error_code(
+                format!("AWS Bedrock credentials expired or invalid for {model_name}."),
+                PlatformErrorCode::AuthenticationRequired,
+            )),
+        ),
+        RenderableAIError::Other { error_message, .. } => (
+            AgentTaskState::Error,
+            Some(TaskStatusUpdate::with_error_code(
+                error_message,
+                PlatformErrorCode::InternalError,
+            )),
+        ),
+    }
+}
 
 /// Classify an `AgentDriverError` into a task state and a `TaskStatusUpdate`
 /// suitable for reporting via `update_agent_task`.

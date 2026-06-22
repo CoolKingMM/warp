@@ -2268,6 +2268,12 @@ pub fn register_agent_event_consumer<C>(
 ) where
     C: GetSingletonModelHandle + UpdateModel,
 {
+    #[cfg(feature = "oss_slim")]
+    {
+        let _ = (conversation_id, consumer_id, ctx);
+    }
+
+    #[cfg(not(feature = "oss_slim"))]
     OrchestrationEventStreamer::handle(ctx).update(ctx, |streamer, ctx| {
         streamer.register_consumer(conversation_id, consumer_id, ctx);
     });
@@ -2281,6 +2287,12 @@ pub fn unregister_agent_event_consumer<C>(
 ) where
     C: GetSingletonModelHandle + UpdateModel,
 {
+    #[cfg(feature = "oss_slim")]
+    {
+        let _ = (conversation_id, consumer_id, ctx);
+    }
+
+    #[cfg(not(feature = "oss_slim"))]
     OrchestrationEventStreamer::handle(ctx).update(ctx, |streamer, ctx| {
         streamer.unregister_consumer(conversation_id, consumer_id, ctx);
     });

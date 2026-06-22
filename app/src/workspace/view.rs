@@ -160,7 +160,9 @@ use crate::ai::agent_conversations_model::AgentConversationsModelEvent;
 use crate::ai::agent_conversations_model::{
     AgentConversationNavigationSubject, AgentConversationsModel,
 };
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::agent_management::notifications::toast_stack::AgentNotificationToastStack;
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::agent_management::notifications::view::{
     NotificationMailboxView, NotificationMailboxViewEvent,
 };
@@ -1100,7 +1102,9 @@ pub struct Workspace {
     right_panel_view: ViewHandle<RightPanelView>,
     working_directories_model: ModelHandle<pane_group::WorkingDirectoriesModel>,
     agent_management_view: ViewHandle<AgentManagementView>,
+    #[cfg(not(feature = "oss_slim"))]
     notification_mailbox_view: Option<ViewHandle<NotificationMailboxView>>,
+    #[cfg(not(feature = "oss_slim"))]
     notification_toast_stack: Option<ViewHandle<AgentNotificationToastStack>>,
     lightbox_view: Option<ViewHandle<LightboxView>>,
     hoa_onboarding_flow: Option<ViewHandle<HoaOnboardingFlow>>,
@@ -2946,6 +2950,7 @@ impl Workspace {
             me.handle_agent_management_view_event(event, ctx);
         });
 
+        #[cfg(not(feature = "oss_slim"))]
         let notification_mailbox_view = if FeatureFlag::HOANotifications.is_enabled() {
             let view = ctx.add_typed_action_view(NotificationMailboxView::new);
             ctx.subscribe_to_view(&view, move |me, _, event, ctx| match event {
@@ -2982,6 +2987,7 @@ impl Workspace {
             None
         };
 
+        #[cfg(not(feature = "oss_slim"))]
         let notification_toast_stack = if FeatureFlag::HOANotifications.is_enabled() {
             Some(ctx.add_typed_action_view(AgentNotificationToastStack::new))
         } else {
@@ -3347,7 +3353,9 @@ impl Workspace {
             orchestration_launch_modal: orchestration_launch_view,
             enable_auto_reload_modal,
             agent_management_view,
+            #[cfg(not(feature = "oss_slim"))]
             notification_mailbox_view,
+            #[cfg(not(feature = "oss_slim"))]
             notification_toast_stack,
             codex_modal,
             cloud_agent_capacity_modal,
@@ -23782,34 +23790,39 @@ impl TypedActionView for Workspace {
                 self.toggle_vertical_tabs_panel(ctx);
             }
             ToggleNotificationMailbox { select_first } => {
-                if cfg!(feature = "oss_slim") {
+                #[cfg(feature = "oss_slim")]
+                {
+                    let _ = select_first;
                     return;
                 }
 
-                if FeatureFlag::HOANotifications.is_enabled()
-                    && *AISettings::as_ref(ctx).show_agent_notifications
+                #[cfg(not(feature = "oss_slim"))]
                 {
-                    let opening = !self.current_workspace_state.is_notification_mailbox_open;
-                    self.current_workspace_state.is_notification_mailbox_open = opening;
-                    if let Some(stack) = &self.notification_toast_stack {
-                        stack.update(ctx, |stack, ctx| stack.set_mailbox_open(opening, ctx));
-                    }
-                    if opening {
-                        if self.tab_bar_mode(ctx).has_tab_bar() {
-                            self.tab_bar_pinned_by_popup = true;
+                    if FeatureFlag::HOANotifications.is_enabled()
+                        && *AISettings::as_ref(ctx).show_agent_notifications
+                    {
+                        let opening = !self.current_workspace_state.is_notification_mailbox_open;
+                        self.current_workspace_state.is_notification_mailbox_open = opening;
+                        if let Some(stack) = &self.notification_toast_stack {
+                            stack.update(ctx, |stack, ctx| stack.set_mailbox_open(opening, ctx));
                         }
-                        if let Some(view) = &self.notification_mailbox_view {
-                            view.update(ctx, |mailbox, ctx| {
-                                mailbox.reset_for_open(*select_first, ctx);
-                            });
-                            ctx.focus(view);
+                        if opening {
+                            if self.tab_bar_mode(ctx).has_tab_bar() {
+                                self.tab_bar_pinned_by_popup = true;
+                            }
+                            if let Some(view) = &self.notification_mailbox_view {
+                                view.update(ctx, |mailbox, ctx| {
+                                    mailbox.reset_for_open(*select_first, ctx);
+                                });
+                                ctx.focus(view);
+                            }
+                        } else {
+                            self.tab_bar_pinned_by_popup = false;
+                            self.sync_window_button_visibility(ctx);
+                            self.focus_active_tab(ctx);
                         }
-                    } else {
-                        self.tab_bar_pinned_by_popup = false;
-                        self.sync_window_button_visibility(ctx);
-                        self.focus_active_tab(ctx);
+                        ctx.notify();
                     }
-                    ctx.notify();
                 }
             }
             ToggleVerticalTabsSettingsPopup => {
@@ -24503,6 +24516,7 @@ impl TypedActionView for Workspace {
                 );
             }
             JumpToLatestToast => {
+                #[cfg(not(feature = "oss_slim"))]
                 if FeatureFlag::HOANotifications.is_enabled() {
                     let newest = AgentNotificationsModel::as_ref(ctx)
                         .notifications()
@@ -24518,10 +24532,13 @@ impl TypedActionView for Workspace {
                             ctx,
                         );
                     }
-                } else if let Some((window_id, tab_index, terminal_view_id)) = self
-                    .agent_toast_stack
-                    .as_ref(ctx)
-                    .get_latest_toast_navigation_data()
+                    return;
+                }
+
+                if let Some((window_id, tab_index, terminal_view_id)) =
+                    self.agent_toast_stack
+                        .as_ref(ctx)
+                        .get_latest_toast_navigation_data()
                 {
                     ctx.windows().show_window_and_focus_app(window_id);
 
@@ -26412,26 +26429,29 @@ impl View for Workspace {
             );
         }
 
-        if self.current_workspace_state.is_notification_mailbox_open {
-            if let Some(view) = &self.notification_mailbox_view {
-                let mailbox_on_left = Self::is_mailbox_on_left(
-                    &TabSettings::as_ref(app).header_toolbar_chip_selection,
-                );
-                let (anchor, child_anchor) = if mailbox_on_left {
-                    (PositionedElementAnchor::BottomLeft, ChildAnchor::TopLeft)
-                } else {
-                    (PositionedElementAnchor::BottomRight, ChildAnchor::TopRight)
-                };
-                stack.add_positioned_overlay_child(
-                    ChildView::new(view).finish(),
-                    OffsetPositioning::offset_from_save_position_element(
-                        NOTIFICATIONS_MAILBOX_POSITION_ID,
-                        Vector2F::zero(),
-                        PositionedElementOffsetBounds::WindowByPosition,
-                        anchor,
-                        child_anchor,
-                    ),
-                );
+        #[cfg(not(feature = "oss_slim"))]
+        {
+            if self.current_workspace_state.is_notification_mailbox_open {
+                if let Some(view) = &self.notification_mailbox_view {
+                    let mailbox_on_left = Self::is_mailbox_on_left(
+                        &TabSettings::as_ref(app).header_toolbar_chip_selection,
+                    );
+                    let (anchor, child_anchor) = if mailbox_on_left {
+                        (PositionedElementAnchor::BottomLeft, ChildAnchor::TopLeft)
+                    } else {
+                        (PositionedElementAnchor::BottomRight, ChildAnchor::TopRight)
+                    };
+                    stack.add_positioned_overlay_child(
+                        ChildView::new(view).finish(),
+                        OffsetPositioning::offset_from_save_position_element(
+                            NOTIFICATIONS_MAILBOX_POSITION_ID,
+                            Vector2F::zero(),
+                            PositionedElementOffsetBounds::WindowByPosition,
+                            anchor,
+                            child_anchor,
+                        ),
+                    );
+                }
             }
         }
 
@@ -26520,40 +26540,50 @@ impl View for Workspace {
         );
 
         // Render agent toast stack (for agent-related notifications) if popup is not open
-        if FeatureFlag::HOANotifications.is_enabled()
-            && *AISettings::as_ref(app).show_agent_notifications
+        #[cfg(not(feature = "oss_slim"))]
         {
-            if !self.current_workspace_state.is_notification_mailbox_open {
-                if let Some(stack_view) = &self.notification_toast_stack {
-                    let mailbox_on_left = Self::is_mailbox_on_left(
-                        &TabSettings::as_ref(app).header_toolbar_chip_selection,
-                    );
-                    let (anchor, child_anchor, offset_x) = if mailbox_on_left {
-                        (
-                            PositionedElementAnchor::BottomLeft,
-                            ChildAnchor::TopLeft,
-                            WORKSPACE_PADDING,
-                        )
-                    } else {
-                        (
-                            PositionedElementAnchor::BottomRight,
-                            ChildAnchor::TopRight,
-                            -WORKSPACE_PADDING,
-                        )
-                    };
-                    stack.add_positioned_overlay_child(
-                        ChildView::new(stack_view).finish(),
-                        OffsetPositioning::offset_from_save_position_element(
-                            TAB_BAR_POSITION_ID,
-                            vec2f(offset_x, 4.),
-                            PositionedElementOffsetBounds::WindowByPosition,
-                            anchor,
-                            child_anchor,
-                        ),
-                    );
+            if FeatureFlag::HOANotifications.is_enabled()
+                && *AISettings::as_ref(app).show_agent_notifications
+            {
+                if !self.current_workspace_state.is_notification_mailbox_open {
+                    if let Some(stack_view) = &self.notification_toast_stack {
+                        let mailbox_on_left = Self::is_mailbox_on_left(
+                            &TabSettings::as_ref(app).header_toolbar_chip_selection,
+                        );
+                        let (anchor, child_anchor, offset_x) = if mailbox_on_left {
+                            (
+                                PositionedElementAnchor::BottomLeft,
+                                ChildAnchor::TopLeft,
+                                WORKSPACE_PADDING,
+                            )
+                        } else {
+                            (
+                                PositionedElementAnchor::BottomRight,
+                                ChildAnchor::TopRight,
+                                -WORKSPACE_PADDING,
+                            )
+                        };
+                        stack.add_positioned_overlay_child(
+                            ChildView::new(stack_view).finish(),
+                            OffsetPositioning::offset_from_save_position_element(
+                                TAB_BAR_POSITION_ID,
+                                vec2f(offset_x, 4.),
+                                PositionedElementOffsetBounds::WindowByPosition,
+                                anchor,
+                                child_anchor,
+                            ),
+                        );
+                    }
                 }
+            } else if !self.current_workspace_state.is_agent_management_popup_open {
+                stack.add_positioned_overlay_child(
+                    ChildView::new(&self.agent_toast_stack).finish(),
+                    self.agent_toast_positioning(),
+                );
             }
-        } else if !self.current_workspace_state.is_agent_management_popup_open {
+        }
+        #[cfg(feature = "oss_slim")]
+        if !self.current_workspace_state.is_agent_management_popup_open {
             stack.add_positioned_overlay_child(
                 ChildView::new(&self.agent_toast_stack).finish(),
                 self.agent_toast_positioning(),

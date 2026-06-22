@@ -7,8 +7,11 @@ mod context_model;
 mod controller;
 pub(crate) mod handoff;
 
+#[cfg(not(feature = "oss_slim"))]
 pub(crate) mod local_agent_task_sync_model;
+#[cfg(not(feature = "oss_slim"))]
 pub(crate) mod orchestration_event_streamer;
+#[cfg(not(feature = "oss_slim"))]
 pub(crate) mod orchestration_events;
 pub(crate) mod orchestration_topology;
 mod passive_suggestions;

@@ -9,7 +9,7 @@ pub mod response_stream;
 pub(super) mod shared_session;
 mod slash_command;
 use std::collections::{HashMap, HashSet};
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), not(feature = "oss_slim")))]
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -34,9 +34,11 @@ use super::agent_view::{AgentViewController, AgentViewControllerEvent, AgentView
 use super::context_model::{BlocklistAIContextModel, PendingAttachment, PendingFile};
 use super::history_model::BlocklistAIHistoryModel;
 use super::input_model::InputConfig;
+#[cfg(not(feature = "oss_slim"))]
 use super::orchestration_event_streamer::{
     OrchestrationEventStreamer, OrchestrationEventStreamerEvent,
 };
+#[cfg(not(feature = "oss_slim"))]
 use super::orchestration_events::{OrchestrationEventService, OrchestrationEventServiceEvent};
 use super::queued_query::{QueuedQueryId, QueuedQueryModel};
 use super::{BlocklistAIInputModel, InputType, ResponseStreamId};
@@ -51,8 +53,9 @@ use crate::ai::agent::{
     PassiveSuggestionTriggerType, RenderableAIError, RequestCost, RequestMetadata, RunningCommand,
     StaticQueryType, UserQueryMode,
 };
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::agent_events::AgentMessageEventMetadata;
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), not(feature = "oss_slim")))]
 use crate::ai::agent_sdk::ClaudeHarness;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::document::ai_document_model::{
@@ -68,7 +71,7 @@ use crate::notebooks::editor::model::FileLinkResolutionContext;
 use crate::persistence::ModelEvent;
 use crate::send_telemetry_from_ctx;
 use crate::server::server_api::AIApiError;
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(target_family = "wasm"), not(feature = "oss_slim")))]
 use crate::server::server_api::ServerApiProvider;
 use crate::server::telemetry::TelemetryEvent;
 use crate::terminal::model::block::{
@@ -381,6 +384,7 @@ enum FollowUpTrigger {
     Auto,
     UserRequested,
 }
+#[cfg(not(feature = "oss_slim"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum LocalClaudeWakeTrigger {
     PendingEvents,
@@ -389,6 +393,7 @@ enum LocalClaudeWakeTrigger {
     },
 }
 
+#[cfg(not(feature = "oss_slim"))]
 impl LocalClaudeWakeTrigger {
     #[cfg(not(target_family = "wasm"))]
     fn requires_pending_events(&self) -> bool {
@@ -590,25 +595,28 @@ impl BlocklistAIController {
             }
         });
 
-        // Subscribe to the orchestration event service to inject events
-        // (e.g. MessagesReceivedFromAgents) into conversations that receive inter-agent messages.
-        let svc = OrchestrationEventService::handle(ctx);
-        ctx.subscribe_to_model(&svc, move |me, event, ctx| {
-            let OrchestrationEventServiceEvent::EventsReady { conversation_id } = event;
-            me.handle_pending_events_ready(*conversation_id, ctx);
-        });
-        let streamer = OrchestrationEventStreamer::handle(ctx);
-        ctx.subscribe_to_model(&streamer, move |me, event, ctx| match event {
-            OrchestrationEventStreamerEvent::DormantClaudeWakeReady {
-                conversation_id,
-                wake_message,
-            } => {
-                me.handle_dormant_claude_wake_ready(*conversation_id, wake_message.clone(), ctx);
-            }
-            // Viewer-mode events are handled by `OrchestrationViewerModel`.
-            OrchestrationEventStreamerEvent::ChildSpawned { .. }
-            | OrchestrationEventStreamerEvent::ChildStatusChanged { .. } => {}
-        });
+        #[cfg(not(feature = "oss_slim"))]
+        {
+            // Subscribe to the orchestration event service to inject events
+            // (e.g. MessagesReceivedFromAgents) into conversations that receive inter-agent messages.
+            let svc = OrchestrationEventService::handle(ctx);
+            ctx.subscribe_to_model(&svc, move |me, event, ctx| {
+                let OrchestrationEventServiceEvent::EventsReady { conversation_id } = event;
+                me.handle_pending_events_ready(*conversation_id, ctx);
+            });
+            let streamer = OrchestrationEventStreamer::handle(ctx);
+            ctx.subscribe_to_model(&streamer, move |me, event, ctx| match event {
+                OrchestrationEventStreamerEvent::DormantClaudeWakeReady {
+                    conversation_id,
+                    wake_message,
+                } => {
+                    me.handle_dormant_claude_wake_ready(*conversation_id, wake_message.clone(), ctx);
+                }
+                // Viewer-mode events are handled by `OrchestrationViewerModel`.
+                OrchestrationEventStreamerEvent::ChildSpawned { .. }
+                | OrchestrationEventStreamerEvent::ChildStatusChanged { .. } => {}
+            });
+        }
         Self {
             input_model,
             context_model,
@@ -1574,6 +1582,7 @@ impl BlocklistAIController {
         // than waiting for a separate idle injection turn. Skip when a server
         // subagent is or will be active — events will be delivered via the idle
         // path once the subagent session ends.
+        #[cfg(not(feature = "oss_slim"))]
         let mut has_piggybacked_events = false;
         if will_trigger_server_subagent || has_active_subagent {
             log::debug!(
@@ -1585,17 +1594,20 @@ impl BlocklistAIController {
                     "a subagent is currently active"
                 }
             );
-        } else if let Some((event_inputs, task_id)) = OrchestrationEventService::handle(ctx)
-            .update(ctx, |svc, ctx| {
-                svc.drain_events_for_request(conversation_id, ctx)
-            })
-        {
-            has_piggybacked_events = true;
-            request_input
-                .input_messages
-                .entry(task_id)
-                .or_default()
-                .extend(event_inputs);
+        } else {
+            #[cfg(not(feature = "oss_slim"))]
+            if let Some((event_inputs, task_id)) = OrchestrationEventService::handle(ctx)
+                .update(ctx, |svc, ctx| {
+                    svc.drain_events_for_request(conversation_id, ctx)
+                })
+            {
+                has_piggybacked_events = true;
+                request_input
+                    .input_messages
+                    .entry(task_id)
+                    .or_default()
+                    .extend(event_inputs);
+            }
         }
 
         let result = self.send_request_input(
@@ -1607,6 +1619,7 @@ impl BlocklistAIController {
             ctx,
         );
 
+        #[cfg(not(feature = "oss_slim"))]
         if has_piggybacked_events && result.is_err() {
             OrchestrationEventService::handle(ctx).update(ctx, |svc, ctx| {
                 svc.requeue_awaiting_events(conversation_id, ctx);
@@ -1653,7 +1666,7 @@ impl BlocklistAIController {
         true
     }
 
-    #[cfg(target_family = "wasm")]
+    #[cfg(all(target_family = "wasm", not(feature = "oss_slim")))]
     fn maybe_prepare_local_claude_wake(
         &mut self,
         _conversation_id: AIConversationId,
@@ -1663,7 +1676,7 @@ impl BlocklistAIController {
         false
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), not(feature = "oss_slim")))]
     fn maybe_prepare_local_claude_wake(
         &mut self,
         conversation_id: AIConversationId,
@@ -1809,7 +1822,7 @@ impl BlocklistAIController {
         true
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), not(feature = "oss_slim")))]
     fn schedule_pending_events_ready_retry(
         &mut self,
         conversation_id: AIConversationId,
@@ -1823,7 +1836,7 @@ impl BlocklistAIController {
         );
     }
 
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(target_family = "wasm"), not(feature = "oss_slim")))]
     fn schedule_dormant_claude_wake_ready_retry(
         &mut self,
         conversation_id: AIConversationId,
@@ -1838,6 +1851,16 @@ impl BlocklistAIController {
         );
     }
 
+    #[cfg(feature = "oss_slim")]
+    fn inject_pending_events_for_request(
+        &mut self,
+        conversation_id: AIConversationId,
+        ctx: &mut ModelContext<Self>,
+    ) {
+        let _ = (conversation_id, ctx);
+    }
+
+    #[cfg(not(feature = "oss_slim"))]
     fn inject_pending_events_for_request(
         &mut self,
         conversation_id: AIConversationId,
@@ -1895,6 +1918,18 @@ impl BlocklistAIController {
 
     /// Handles the EventsReady signal. Checks readiness, drains
     /// pending events from the service, and injects them into the conversation.
+    #[cfg(feature = "oss_slim")]
+    fn handle_pending_events_ready(
+        &mut self,
+        conversation_id: AIConversationId,
+        ctx: &mut ModelContext<Self>,
+    ) {
+        let _ = (conversation_id, ctx);
+    }
+
+    /// Handles the EventsReady signal. Checks readiness, drains
+    /// pending events from the service, and injects them into the conversation.
+    #[cfg(not(feature = "oss_slim"))]
     fn handle_pending_events_ready(
         &mut self,
         conversation_id: AIConversationId,
@@ -1915,6 +1950,7 @@ impl BlocklistAIController {
         self.inject_pending_events_for_request(conversation_id, ctx);
     }
 
+    #[cfg(not(feature = "oss_slim"))]
     fn handle_dormant_claude_wake_ready(
         &mut self,
         conversation_id: AIConversationId,

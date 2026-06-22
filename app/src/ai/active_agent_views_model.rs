@@ -10,6 +10,7 @@ use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::agent_conversations_model::{AgentConversationEntry, AgentConversationEntryId};
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::blocklist::agent_view::{AgentViewController, AgentViewControllerEvent};
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::blocklist::orchestration_event_streamer::{
     register_agent_event_consumer, unregister_agent_event_consumer,
 };
@@ -169,6 +170,7 @@ impl ActiveAgentViewsModel {
         // `Active` while the unregister path has already torn down the
         // streamer consumer. Re-register here; the `EnteredAgentView`
         // subscription only fires on subsequent state transitions.
+        #[cfg(not(feature = "oss_slim"))]
         if let Some(conversation_id) = controller
             .as_ref(ctx)
             .agent_view_state()
@@ -190,6 +192,7 @@ impl ActiveAgentViewsModel {
                 model.update_focused_conversation_for_terminal(terminal_view_id, Some(conv_id));
                 // Bridge the controller's lifecycle into the streamer's
                 // per-conversation consumer registry.
+                #[cfg(not(feature = "oss_slim"))]
                 register_agent_event_consumer(*conversation_id, terminal_view_id, ctx);
                 // Emit so subscribers can move this conversation to the Active section.
                 ctx.emit(ActiveAgentViewsEvent::TerminalViewFocused);
@@ -211,6 +214,7 @@ impl ActiveAgentViewsModel {
 
                 // Clear the focused conversation in whichever window owns this terminal view.
                 model.update_focused_conversation_for_terminal(terminal_view_id, None);
+                #[cfg(not(feature = "oss_slim"))]
                 unregister_agent_event_consumer(*conversation_id, terminal_view_id, ctx);
                 // Emit so subscribers can move this conversation to the Past section.
                 ctx.emit(ActiveAgentViewsEvent::ConversationClosed {
@@ -249,6 +253,7 @@ impl ActiveAgentViewsModel {
             if let Some(conversation_id) = closed_conversation_id {
                 // The pane-close path bypasses exit_agent_view_internal, so
                 // unregister the streamer consumer here.
+                #[cfg(not(feature = "oss_slim"))]
                 unregister_agent_event_consumer(conversation_id, terminal_pane_id, ctx);
                 ctx.emit(ActiveAgentViewsEvent::ConversationClosed { conversation_id });
             }

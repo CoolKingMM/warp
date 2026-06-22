@@ -47,7 +47,9 @@ use crate::ai::ambient_agents::{
     conversation_output_status_from_conversation, AmbientAgentTaskId, AmbientConversationStatus,
 };
 use crate::ai::blocklist::agent_view::AgentViewEntryOrigin;
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::blocklist::local_agent_task_sync_model::LocalAgentTaskSyncModel;
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::blocklist::orchestration_event_streamer::{
     register_agent_event_consumer, unregister_agent_event_consumer,
 };
@@ -660,6 +662,7 @@ impl AgentDriver {
         // as the first child is registered.
         if let Some(conv_id) = restored_conversation_id {
             stamp_parent_agent_id_if_some(conv_id, parent_run_id_for_self.as_deref(), ctx);
+            #[cfg(not(feature = "oss_slim"))]
             register_agent_event_consumer(conv_id, ctx.model_id(), ctx);
             run_conversation_id = Some(conv_id);
         }
@@ -755,6 +758,12 @@ impl AgentDriver {
         let Some(conversation_id) = self.run_conversation_id else {
             return;
         };
+        #[cfg(feature = "oss_slim")]
+        {
+            let _ = (conversation_id, ctx);
+        }
+
+        #[cfg(not(feature = "oss_slim"))]
         unregister_agent_event_consumer(conversation_id, ctx.model_id(), ctx);
     }
 
@@ -2801,6 +2810,7 @@ impl AgentDriver {
                         me.parent_run_id.as_deref(),
                         ctx,
                     );
+                    #[cfg(not(feature = "oss_slim"))]
                     register_agent_event_consumer(*conversation_id, ctx.model_id(), ctx);
                 }
             }
@@ -3198,6 +3208,7 @@ impl AgentDriver {
 
         // Register this session with LocalAgentTaskSyncModel so CLI agent
         // status changes are reported to the server.
+        #[cfg(not(feature = "oss_slim"))]
         if let Some(task_id) = self.task_id {
             LocalAgentTaskSyncModel::handle(ctx).update(ctx, |model, ctx| {
                 model.register_cli_session(terminal_view_id, task_id, ctx);

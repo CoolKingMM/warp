@@ -24,11 +24,13 @@ use super::network::{
     control_action_failure_reason_string, session_ended_reason_string,
     viewer_removed_reason_string, write_to_pty_failure_reason_string, Network, NetworkEvent,
 };
+#[cfg(not(feature = "oss_slim"))]
 use super::orchestration_viewer_model::OrchestrationViewerModel;
 use crate::ai::active_agent_views_model::ActiveAgentViewsModel;
 use crate::ai::agent::conversation::ConversationStatus;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::blocklist::agent_view::{AgentViewController, AgentViewControllerEvent};
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::blocklist::orchestration_event_streamer::OrchestrationEventStreamer;
 use crate::ai::blocklist::{
     BlocklistAIContextEvent, BlocklistAIContextModel, BlocklistAIHistoryEvent,
@@ -103,11 +105,13 @@ pub struct TerminalManager {
     /// ambient session join. `Arc<FairMutex<Option<...>>>` matches
     /// `current_network` so the network-event closure can write into it
     /// without `&mut self`.
+    #[cfg(not(feature = "oss_slim"))]
     orchestration_viewer_model: Arc<FairMutex<Option<ModelHandle<OrchestrationViewerModel>>>>,
     /// `true` for the root viewer pane of an orchestrator, `false` for
     /// per-child viewer panes. Skipping polling on children avoids
     /// duplicated REST traffic and grandchild double-registration via the
     /// transitive `ancestor_run_id` filter.
+    #[cfg(not(feature = "oss_slim"))]
     enable_orchestration_polling: bool,
 }
 
@@ -198,6 +202,7 @@ impl TerminalManager {
         resources: TerminalViewResources,
         initial_size: Vector2F,
         window_id: WindowId,
+        #[cfg_attr(feature = "oss_slim", allow(unused_variables))]
         enable_orchestration_polling: bool,
         is_cloud_mode: bool,
         ctx: &mut AppContext,
@@ -314,7 +319,9 @@ impl TerminalManager {
             current_network: Arc::new(FairMutex::new(None)),
             viewer_remote_update_guard: RemoteUpdateGuard::new(),
             outbound_handlers_registered: false,
+            #[cfg(not(feature = "oss_slim"))]
             orchestration_viewer_model: Arc::new(FairMutex::new(None)),
+            #[cfg(not(feature = "oss_slim"))]
             enable_orchestration_polling,
         }
     }
@@ -502,7 +509,9 @@ impl TerminalManager {
             self.current_network.clone(),
             self.network_resources.prompt_type.clone(),
             self.viewer_remote_update_guard.clone(),
+            #[cfg(not(feature = "oss_slim"))]
             self.orchestration_viewer_model.clone(),
+            #[cfg(not(feature = "oss_slim"))]
             self.enable_orchestration_polling,
             ctx,
         );
@@ -745,7 +754,9 @@ impl TerminalManager {
         current_network: Arc<FairMutex<Option<ModelHandle<Network>>>>,
         prompt_type: ModelHandle<PromptType>,
         viewer_remote_update_guard: RemoteUpdateGuard,
+        #[cfg(not(feature = "oss_slim"))]
         orchestration_viewer_model: Arc<FairMutex<Option<ModelHandle<OrchestrationViewerModel>>>>,
+        #[cfg(not(feature = "oss_slim"))]
         enable_orchestration_polling: bool,
         ctx: &mut AppContext,
     ) {
@@ -823,23 +834,26 @@ impl TerminalManager {
                     }
                 }
 
-                if enable_orchestration_polling
-                    && orchestration_viewer_model.lock().is_none()
+                #[cfg(not(feature = "oss_slim"))]
                 {
-                    if let Some(task_id) = ambient_task_id {
-                        let terminal_view_id = view.id();
-                        let weak_view_handle_for_orch = weak_view_handle.clone();
-                        let orchestration_viewer_model_slot =
-                            orchestration_viewer_model.clone();
-                        let model = ctx.add_model(|model_ctx| {
-                            OrchestrationViewerModel::new(
-                                task_id,
-                                terminal_view_id,
-                                weak_view_handle_for_orch,
-                                model_ctx,
-                            )
-                        });
-                        *orchestration_viewer_model_slot.lock() = Some(model);
+                    if enable_orchestration_polling
+                        && orchestration_viewer_model.lock().is_none()
+                    {
+                        if let Some(task_id) = ambient_task_id {
+                            let terminal_view_id = view.id();
+                            let weak_view_handle_for_orch = weak_view_handle.clone();
+                            let orchestration_viewer_model_slot =
+                                orchestration_viewer_model.clone();
+                            let model = ctx.add_model(|model_ctx| {
+                                OrchestrationViewerModel::new(
+                                    task_id,
+                                    terminal_view_id,
+                                    weak_view_handle_for_orch,
+                                    model_ctx,
+                                )
+                            });
+                            *orchestration_viewer_model_slot.lock() = Some(model);
+                        }
                     }
                 }
 
@@ -896,9 +910,11 @@ impl TerminalManager {
                         terminal_view.owned_ambient_agent_task_id(app).is_some()
                     });
                     if !is_owner {
+                        #[cfg(not(feature = "oss_slim"))]
                         Self::stop_orchestration_polling(&orchestration_viewer_model, ctx);
                     }
                 } else {
+                    #[cfg(not(feature = "oss_slim"))]
                     Self::stop_orchestration_polling(&orchestration_viewer_model, ctx);
                     Self::shared_session_ended(&view, model.clone(), ctx);
                 }
@@ -934,6 +950,7 @@ impl TerminalManager {
                 };
                 // Viewer has been removed and will not re-attach; stop the
                 // children-polling background work.
+                #[cfg(not(feature = "oss_slim"))]
                 Self::stop_orchestration_polling(&orchestration_viewer_model, ctx);
                 Self::shared_session_ended(&view, model.clone(), ctx);
                 view.update(ctx, |terminal_view, ctx| {
@@ -965,6 +982,7 @@ impl TerminalManager {
                 };
                 // Reconnection has been abandoned; stop the children-polling
                 // background work.
+                #[cfg(not(feature = "oss_slim"))]
                 Self::stop_orchestration_polling(&orchestration_viewer_model, ctx);
                 Self::shared_session_ended(&view, model.clone(), ctx);
                 view.update(ctx, |terminal_view, ctx| {
@@ -1659,6 +1677,7 @@ impl TerminalManager {
     /// pane close. The unregister API is idempotent, so calling it when
     /// the flag is off (or when the streamer has already removed the
     /// entry) is harmless.
+    #[cfg(not(feature = "oss_slim"))]
     fn stop_orchestration_polling(
         orchestration_viewer_model: &Arc<FairMutex<Option<ModelHandle<OrchestrationViewerModel>>>>,
         ctx: &mut AppContext,
@@ -1812,6 +1831,7 @@ impl crate::terminal::TerminalManager for TerminalManager {
         // through them — without this, the SSE leaks until the app exits.
         // `stop_orchestration_polling` is idempotent, so a later
         // network-event-driven call is a no-op.
+        #[cfg(not(feature = "oss_slim"))]
         Self::stop_orchestration_polling(&self.orchestration_viewer_model, app);
 
         if let NetworkState::Active(ref network) = self.network_state {

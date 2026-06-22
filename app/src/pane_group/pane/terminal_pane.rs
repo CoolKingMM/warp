@@ -27,6 +27,7 @@ use crate::ai::agent::StartAgentExecutionMode;
 use crate::ai::ambient_agents::task::{normalize_orchestrator_agent_name, HarnessConfig};
 use crate::ai::ambient_agents::{AgentConfigSnapshot, AmbientAgentTaskId};
 use crate::ai::blocklist::agent_view::{AgentViewControllerEvent, AgentViewEntryOrigin};
+#[cfg(not(feature = "oss_slim"))]
 use crate::ai::blocklist::orchestration_event_streamer::OrchestrationEventStreamer;
 #[cfg(feature = "local_fs")]
 use crate::ai::blocklist::BlocklistAIHistoryEvent;
@@ -878,6 +879,7 @@ fn kill_agent_conversation(
 ) {
     let state = agent_conversation_action_state(conversation_id, ctx);
     // Tombstone every Kill so late events cannot restore a removed child.
+    #[cfg(not(feature = "oss_slim"))]
     OrchestrationEventStreamer::handle(ctx).update(ctx, |streamer, ctx| {
         streamer.mark_conversation_killed(conversation_id, ctx);
     });

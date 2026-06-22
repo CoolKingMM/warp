@@ -12,5 +12,6 @@ pub(crate) use agent_management_model::{AgentManagementEvent, AgentNotifications
 pub fn init(app: &mut warpui::AppContext) {
     view::init(app);
     agent_type_selector::init(app);
+    #[cfg(not(feature = "oss_slim"))]
     notifications::view::NotificationMailboxView::init(app);
 }

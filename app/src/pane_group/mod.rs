@@ -3858,6 +3858,7 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
+        self.ensure_project_terminal_roots(ctx);
         let base_pane_id = self.focused_pane_id(ctx);
         let preserve_project_terminal_view =
             self.project_terminal_root_for_pane(base_pane_id).is_some();
@@ -3886,6 +3887,7 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
+        self.ensure_project_terminal_roots(ctx);
         let base_pane_id = self.focused_pane_id(ctx);
         let preserve_project_terminal_view =
             self.project_terminal_root_for_pane(base_pane_id).is_some();
@@ -3916,6 +3918,7 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
+        self.ensure_project_terminal_roots(ctx);
         let preserve_project_terminal_view =
             self.project_terminal_root_for_pane(base_pane_id).is_some();
         if !preserve_project_terminal_view {
@@ -6688,7 +6691,16 @@ impl PaneGroup {
             return;
         }
 
-        self.project_terminal_roots = self.visible_terminal_pane_ids(ctx);
+        self.project_terminal_roots = self
+            .panes
+            .root_slot_pane_id_groups()
+            .into_iter()
+            .filter_map(|pane_ids| {
+                pane_ids
+                    .into_iter()
+                    .find(|pane_id| self.terminal_view_from_pane_id(*pane_id, ctx).is_some())
+            })
+            .collect();
     }
 
     fn register_project_terminal_root(&mut self, pane_id: PaneId) {
@@ -6774,6 +6786,7 @@ impl PaneGroup {
         pane_id: PaneId,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
+        self.ensure_project_terminal_roots(ctx);
         let roots = self.project_terminal_roots.clone();
         if roots.is_empty() {
             let pane_ids = self.visible_terminal_pane_ids(ctx);
@@ -6849,6 +6862,7 @@ impl PaneGroup {
         forward: bool,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
+        self.ensure_project_terminal_roots(ctx);
         let pane_ids = if self.project_terminal_roots.is_empty() {
             self.visible_terminal_pane_ids(ctx)
         } else {

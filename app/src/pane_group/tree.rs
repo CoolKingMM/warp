@@ -537,6 +537,17 @@ impl PaneData {
         }
     }
 
+    pub fn root_slot_pane_id_groups(&self) -> Vec<Vec<PaneId>> {
+        match &self.root {
+            PaneNode::Leaf(_) => vec![self.root.pane_ids()],
+            PaneNode::Branch(branch) => branch
+                .nodes
+                .iter()
+                .map(|(_, node)| node.pane_ids())
+                .collect(),
+        }
+    }
+
     /// Get only the visible child panes in an array sorted from left to right, up to down.
     /// This filters out panes that are hidden for any reason (move, job, close, etc.).
     pub fn visible_pane_ids(&self) -> Vec<PaneId> {

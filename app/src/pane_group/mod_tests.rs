@@ -818,6 +818,7 @@ fn test_add_terminal_pane_stays_in_project_terminal_group() {
                 panes.project_terminal_roots,
                 vec![first_pane_id, project_terminal_pane_id]
             );
+            panes.project_terminal_roots.clear();
 
             let split_pane_id = panes.add_terminal_pane(Direction::Right, None, ctx);
             let split_pane_id = PaneId::from(split_pane_id);

@@ -732,7 +732,7 @@ fn test_pane_focus_on_close() {
 }
 
 #[test]
-fn test_explicit_terminal_splits_exit_project_terminal_single_view() {
+fn test_explicit_terminal_splits_stay_in_project_terminal_group() {
     if !cfg!(feature = "oss_slim") {
         return;
     }
@@ -756,6 +756,10 @@ fn test_explicit_terminal_splits_exit_project_terminal_single_view() {
 
                 assert!(panes.show_project_terminal_as_single);
                 assert!(!panes.is_focused_pane_maximized(ctx));
+                assert_eq!(
+                    panes.project_terminal_roots,
+                    vec![first_pane_id, project_terminal_pane_id]
+                );
 
                 let visible_count_before_split = panes.visible_pane_count();
                 panes.handle_pane_event(project_terminal_pane_id, &pane_event, ctx);
@@ -765,9 +769,30 @@ fn test_explicit_terminal_splits_exit_project_terminal_single_view() {
                 );
 
                 assert_eq!(panes.visible_pane_count(), visible_count_before_split + 1);
-                assert!(!panes.show_project_terminal_as_single);
+                assert!(panes.show_project_terminal_as_single);
                 assert!(!panes.is_focused_pane_maximized(ctx));
                 assert_eq!(panes.focused_pane_id(ctx), split_pane_id);
+                assert_eq!(
+                    panes.project_terminal_roots,
+                    vec![first_pane_id, project_terminal_pane_id]
+                );
+
+                let first_group = panes.project_terminal_panes_for_root(first_pane_id);
+                assert_eq!(first_group, vec![first_pane_id]);
+
+                let split_group =
+                    panes.project_terminal_panes_for_root(project_terminal_pane_id);
+                assert_eq!(split_group.len(), 2);
+                assert!(split_group.contains(&project_terminal_pane_id));
+                assert!(split_group.contains(&split_pane_id));
+
+                assert!(panes.focus_next_terminal_pane(ctx));
+                assert_eq!(panes.focused_pane_id(ctx), first_pane_id);
+                assert!(panes.show_project_terminal_as_single);
+
+                assert!(panes.focus_next_terminal_pane(ctx));
+                assert_eq!(panes.focused_pane_id(ctx), project_terminal_pane_id);
+                assert!(panes.show_project_terminal_as_single);
             });
         }
     });

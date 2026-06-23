@@ -461,6 +461,50 @@ impl PaneData {
         successful_split
     }
 
+    /// Split a pane while preserving the root-level slot that contains it.
+    ///
+    /// Normal same-axis splits flatten into the containing branch. OSS slim project terminal
+    /// groups need VS Code-like behavior instead: root-level terminal slots remain the units
+    /// users cycle through, and explicit splits stay inside the selected slot.
+    pub fn split_preserving_root_slot(
+        &mut self,
+        old_id: PaneId,
+        new_id: PaneId,
+        direction: Direction,
+    ) -> bool {
+        if matches!(&self.root, PaneNode::Leaf(pane_id) if *pane_id == old_id) {
+            self.root = PaneNode::Branch(PaneBranch::for_leaves(old_id, new_id, direction));
+            self.len += 1;
+            return true;
+        }
+
+        let PaneNode::Branch(branch) = &mut self.root else {
+            return false;
+        };
+
+        let mut successful_split = false;
+        for (_, node) in branch.nodes.iter_mut() {
+            if !node.contains_pane(old_id) {
+                continue;
+            }
+
+            successful_split = match node {
+                PaneNode::Leaf(pane_id) if *pane_id == old_id => {
+                    *node = PaneNode::Branch(PaneBranch::for_leaves(old_id, new_id, direction));
+                    true
+                }
+                _ => node.split(old_id, new_id, direction),
+            };
+            break;
+        }
+
+        if successful_split {
+            self.len += 1;
+        }
+
+        successful_split
+    }
+
     /// Split the root of the pane tree, inserting `new_id` according to the given direction.
     pub fn split_root(&mut self, new_id: PaneId, direction: Direction) {
         self.root.insert(new_id, direction);
@@ -480,6 +524,17 @@ impl PaneData {
     /// Get the child panes in an array sorted from left to right, up to down.
     pub fn pane_ids(&self) -> Vec<PaneId> {
         self.root.pane_ids()
+    }
+
+    pub fn root_slot_pane_ids(&self, root_pane_id: PaneId) -> Option<Vec<PaneId>> {
+        match &self.root {
+            PaneNode::Leaf(pane_id) => (*pane_id == root_pane_id).then(|| self.root.pane_ids()),
+            PaneNode::Branch(branch) => branch
+                .nodes
+                .iter()
+                .find(|(_, node)| node.contains_pane(root_pane_id))
+                .map(|(_, node)| node.pane_ids()),
+        }
     }
 
     /// Get only the visible child panes in an array sorted from left to right, up to down.

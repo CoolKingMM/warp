@@ -814,6 +814,12 @@ enum NewPaneVisibility {
     HiddenForMove,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NewPaneSplitBehavior {
+    Normal,
+    PreserveRootSlot,
+}
+
 #[derive(Debug, Clone, Copy)]
 struct AddPaneOptions {
     direction: Direction,
@@ -821,6 +827,7 @@ struct AddPaneOptions {
     focus_new_pane: bool,
     visibility: NewPaneVisibility,
     emit_app_state_changed: bool,
+    split_behavior: NewPaneSplitBehavior,
 }
 
 impl NewTerminalOptions {
@@ -875,9 +882,11 @@ pub struct PaneGroup {
     panes: PaneData,
     /// Centralized focus state model. Panes subscribe to this to derive their split pane state.
     focus_state: ModelHandle<focus_state::PaneGroupFocusState>,
-    /// OSS slim project-terminal cycling temporarily renders one terminal at a time. Explicit
-    /// split-pane creation keeps the normal pane tree visible.
+    /// OSS slim project-terminal cycling renders one terminal group at a time.
     show_project_terminal_as_single: bool,
+    /// Root terminal panes for OSS slim project-terminal slots. Explicit splits stay inside the
+    /// selected root slot, matching VS Code's terminal group behavior.
+    project_terminal_roots: Vec<PaneId>,
     pane_history: Vec<PaneId>,
     /// Mapping from pane IDs to their contents.
     pane_contents: HashMap<PaneId, Box<dyn AnyPaneContent>>,
@@ -3116,6 +3125,7 @@ impl PaneGroup {
             panes: pane_data,
             focus_state,
             show_project_terminal_as_single: false,
+            project_terminal_roots: Vec::new(),
             pane_history,
             pane_contents,
             server_api,
@@ -3890,7 +3900,11 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
-        self.set_show_project_terminal_as_single(false, ctx);
+        let preserve_project_terminal_view =
+            self.project_terminal_root_for_pane(base_pane_id).is_some();
+        if !preserve_project_terminal_view {
+            self.set_show_project_terminal_as_single(false, ctx);
+        }
         let base_session_id = base_pane_id
             .as_terminal_pane_id()
             .or(self.active_session_id(ctx));
@@ -3902,6 +3916,9 @@ impl PaneGroup {
             None, /* conversation_restoration */
             ctx,
         );
+        if preserve_project_terminal_view {
+            self.set_show_project_terminal_as_single(true, ctx);
+        }
         ctx.emit(Event::AppStateChanged);
         new_pane_id
     }
@@ -4674,6 +4691,7 @@ impl PaneGroup {
         if !self.pane_contents.contains_key(&pane_id) {
             return;
         }
+        self.update_project_terminal_roots_for_removed_pane(pane_id);
 
         // Child agent panes return to off-tree state instead of being
         // destroyed; future pill clicks re-host the same view. The view
@@ -5164,6 +5182,7 @@ impl PaneGroup {
                 focus_new_pane: false,
                 visibility: NewPaneVisibility::HiddenForMove,
                 emit_app_state_changed: true,
+                split_behavior: NewPaneSplitBehavior::Normal,
             },
             ctx,
         );
@@ -6500,7 +6519,16 @@ impl PaneGroup {
 
         let pane_id = self.init_pane(new_pane, ctx)?;
         let split_succeeded = match options.base_pane_id {
-            Some(base_pane_id) => self.panes.split(base_pane_id, pane_id, options.direction),
+            Some(base_pane_id) => match options.split_behavior {
+                NewPaneSplitBehavior::Normal => {
+                    self.panes.split(base_pane_id, pane_id, options.direction)
+                }
+                NewPaneSplitBehavior::PreserveRootSlot => self.panes.split_preserving_root_slot(
+                    base_pane_id,
+                    pane_id,
+                    options.direction,
+                ),
+            },
             None => {
                 self.panes.split_root(pane_id, options.direction);
                 true
@@ -6556,6 +6584,7 @@ impl PaneGroup {
             );
             ctx.notify();
         });
+        let split_behavior = self.project_terminal_split_behavior(base_pane_id);
         self.add_pane_with_options(
             new_pane,
             AddPaneOptions {
@@ -6564,6 +6593,7 @@ impl PaneGroup {
                 focus_new_pane,
                 visibility: NewPaneVisibility::Visible,
                 emit_app_state_changed: true,
+                split_behavior,
             },
             ctx,
         )
@@ -6637,6 +6667,84 @@ impl PaneGroup {
         }
     }
 
+    fn ensure_project_terminal_roots(&mut self, ctx: &AppContext) {
+        if !cfg!(feature = "oss_slim") || !self.project_terminal_roots.is_empty() {
+            return;
+        }
+
+        self.project_terminal_roots = self.visible_terminal_pane_ids(ctx);
+    }
+
+    fn register_project_terminal_root(&mut self, pane_id: PaneId) {
+        if cfg!(feature = "oss_slim") && !self.project_terminal_roots.contains(&pane_id) {
+            self.project_terminal_roots.push(pane_id);
+        }
+    }
+
+    fn remove_project_terminal_root(&mut self, pane_id: PaneId) {
+        self.project_terminal_roots.retain(|root| *root != pane_id);
+        if self.project_terminal_roots.len() <= 1 {
+            self.project_terminal_roots.clear();
+        }
+    }
+
+    fn update_project_terminal_roots_for_removed_pane(&mut self, pane_id: PaneId) {
+        if !cfg!(feature = "oss_slim") {
+            return;
+        }
+
+        let Some(root_index) = self
+            .project_terminal_roots
+            .iter()
+            .position(|root| *root == pane_id)
+        else {
+            return;
+        };
+
+        if let Some(replacement_root) = self
+            .project_terminal_panes_for_root(pane_id)
+            .into_iter()
+            .find(|candidate| *candidate != pane_id && self.pane_contents.contains_key(candidate))
+        {
+            self.project_terminal_roots[root_index] = replacement_root;
+        } else {
+            self.remove_project_terminal_root(pane_id);
+        }
+    }
+
+    fn project_terminal_root_for_pane(&self, pane_id: PaneId) -> Option<PaneId> {
+        if !cfg!(feature = "oss_slim") {
+            return None;
+        }
+
+        self.project_terminal_roots
+            .iter()
+            .copied()
+            .find(|root| {
+                self.panes
+                    .root_slot_pane_ids(*root)
+                    .is_some_and(|pane_ids| pane_ids.contains(&pane_id))
+            })
+    }
+
+    fn project_terminal_panes_for_root(&self, root: PaneId) -> Vec<PaneId> {
+        self.panes.root_slot_pane_ids(root).unwrap_or_else(|| vec![root])
+    }
+
+    fn project_terminal_split_behavior(
+        &self,
+        base_pane_id: Option<PaneId>,
+    ) -> NewPaneSplitBehavior {
+        if base_pane_id
+            .and_then(|pane_id| self.project_terminal_root_for_pane(pane_id))
+            .is_some()
+        {
+            NewPaneSplitBehavior::PreserveRootSlot
+        } else {
+            NewPaneSplitBehavior::Normal
+        }
+    }
+
     pub fn focus_next_terminal_pane(&mut self, ctx: &mut ViewContext<Self>) -> bool {
         self.focus_adjacent_terminal_pane(true, ctx)
     }
@@ -6650,8 +6758,13 @@ impl PaneGroup {
         pane_id: PaneId,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
-        let pane_ids = self.visible_terminal_pane_ids(ctx);
-        if pane_ids.len() <= 1 || !pane_ids.contains(&pane_id) {
+        let roots = self.project_terminal_roots.clone();
+        if roots.is_empty() {
+            let pane_ids = self.visible_terminal_pane_ids(ctx);
+            if pane_ids.len() <= 1 || !pane_ids.contains(&pane_id) {
+                return false;
+            }
+        } else if self.project_terminal_root_for_pane(pane_id).is_none() {
             return false;
         }
 
@@ -6675,7 +6788,17 @@ impl PaneGroup {
                 None
             }
         };
-        let new_pane_id = self.add_terminal_pane(Direction::Right, chosen_shell, ctx);
+        self.ensure_project_terminal_roots(ctx);
+        self.set_show_project_terminal_as_single(false, ctx);
+        let new_pane_id = self.add_session(
+            Direction::Right,
+            None,
+            self.active_session_id(ctx),
+            chosen_shell,
+            None, /* conversation_restoration */
+            ctx,
+        );
+        self.register_project_terminal_root(new_pane_id.into());
         self.focus_terminal_pane_as_single(new_pane_id.into(), ctx);
     }
 
@@ -6710,7 +6833,11 @@ impl PaneGroup {
         forward: bool,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
-        let pane_ids = self.visible_terminal_pane_ids(ctx);
+        let pane_ids = if self.project_terminal_roots.is_empty() {
+            self.visible_terminal_pane_ids(ctx)
+        } else {
+            self.project_terminal_roots.clone()
+        };
         if pane_ids.len() <= 1 {
             return false;
         }
@@ -6718,7 +6845,10 @@ impl PaneGroup {
         let active_pane_id = self
             .active_session_id(ctx)
             .map(Into::into)
-            .filter(|pane_id| pane_ids.contains(pane_id))
+            .and_then(|pane_id| {
+                self.project_terminal_root_for_pane(pane_id)
+                    .or_else(|| pane_ids.contains(&pane_id).then_some(pane_id))
+            })
             .unwrap_or_else(|| self.focused_pane_id(ctx));
         let current_index = pane_ids
             .iter()
@@ -8048,29 +8178,41 @@ impl View for PaneGroup {
 
         let focused_pane_id = self.focused_pane_id(app);
         let visible_terminal_pane_ids = self.visible_terminal_pane_ids(app);
-        let project_terminal_to_show = if self.show_project_terminal_as_single
+        let project_terminal_panes_to_show = if self.show_project_terminal_as_single
             && cfg!(feature = "oss_slim")
             && visible_terminal_pane_ids.len() > 1
         {
-            focused_pane_id
-                .is_terminal_pane()
-                .then_some(focused_pane_id)
-                .or_else(|| {
-                    self.active_session_id(app)
-                        .map(Into::into)
-                        .filter(|pane_id| visible_terminal_pane_ids.contains(pane_id))
-                })
-                .or_else(|| visible_terminal_pane_ids.first().copied())
+            let root_to_show = if self.project_terminal_roots.is_empty() {
+                focused_pane_id
+                    .is_terminal_pane()
+                    .then_some(focused_pane_id)
+                    .or_else(|| {
+                        self.active_session_id(app)
+                            .map(Into::into)
+                            .filter(|pane_id| visible_terminal_pane_ids.contains(pane_id))
+                    })
+                    .or_else(|| visible_terminal_pane_ids.first().copied())
+            } else {
+                self.project_terminal_root_for_pane(focused_pane_id)
+                    .or_else(|| {
+                        self.active_session_id(app)
+                            .map(Into::into)
+                            .and_then(|pane_id| self.project_terminal_root_for_pane(pane_id))
+                    })
+                    .or_else(|| self.project_terminal_roots.first().copied())
+            };
+
+            root_to_show.map(|root| self.project_terminal_panes_for_root(root))
         } else {
             None
         };
 
         let main_content = if self.is_focused_pane_maximized(app) {
             focused_pane_id.render(app)
-        } else if let Some(project_terminal_to_show) = project_terminal_to_show {
+        } else if let Some(project_terminal_panes_to_show) = project_terminal_panes_to_show {
             let hidden_terminal_panes = visible_terminal_pane_ids
                 .into_iter()
-                .filter(|pane_id| *pane_id != project_terminal_to_show)
+                .filter(|pane_id| !project_terminal_panes_to_show.contains(pane_id))
                 .collect::<Vec<_>>();
             EventHandler::new(self.panes.render_with_additional_hidden_panes(
                 appearance.theme(),

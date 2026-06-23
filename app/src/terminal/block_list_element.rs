@@ -1614,6 +1614,8 @@ impl BlockListElement {
                                 // except when the find bar is open, in which case we allow selecting it.
                                 && (!on_long_running_block || find_bar_open)
                             {
+                                should_redetermine_focus =
+                                    modifiers.ctrl || modifiers.cmd || modifiers.shift;
                                 ctx.dispatch_typed_action(TerminalAction::BlockSelect {
                                     action: BlockSelectAction::MouseDown(Some(block_index)),
                                     should_redetermine_focus,

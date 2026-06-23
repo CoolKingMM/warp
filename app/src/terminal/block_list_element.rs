@@ -3641,6 +3641,9 @@ impl Element for BlockListElement {
         );
         for (idx, maybe_element) in visible_block_indices.iter().zip(elements) {
             if let Some(mut element) = maybe_element {
+                if self.selected_blocks.is_selected(*idx) {
+                    continue;
+                }
                 element.layout(
                     SizeConstraint::new(
                         vec2f(constraint.min.x(), BLOCK_HOVER_BUTTON_HEIGHT),
@@ -3855,7 +3858,14 @@ impl Element for BlockListElement {
                         start_of_continuous_selected_blocks.contains(block_index);
                     let is_bottom_of_continuous_selection =
                         end_of_continuous_selected_blocks.contains(block_index);
-                    if is_current_block_selected {
+                    let can_be_ai_context = self.ai_render_context.borrow().is_ai_input_enabled
+                        && block.can_be_ai_context(agent_view_state);
+                    // Keep block selection behavior intact, but suppress the regular local
+                    // selection chrome. AI context selection still needs a visible affordance.
+                    let should_render_local_block_selection =
+                        is_current_block_selected && can_be_ai_context;
+
+                    if should_render_local_block_selection {
                         let border_info = compute_border_info(
                             is_singleton,
                             tail_index,
@@ -3863,9 +3873,6 @@ impl Element for BlockListElement {
                             is_top_of_continuous_selection,
                             is_bottom_of_continuous_selection,
                         );
-
-                        let can_be_ai_context = self.ai_render_context.borrow().is_ai_input_enabled
-                            && block.can_be_ai_context(agent_view_state);
 
                         ctx.scene
                             .draw_rect_with_hit_recording(RectF::new(
@@ -3901,12 +3908,13 @@ impl Element for BlockListElement {
 
                     // If this is the top of a continuous selection, there's a top border, so we don't want to draw
                     // the gray border at the top of the block.
-                    if is_top_of_continuous_selection {
+                    if should_render_local_block_selection && is_top_of_continuous_selection {
                         draw_border_above_block = false;
                     }
 
                     // Current block is selected by ourselves or by another shared session participant
-                    let mut is_current_block_selected_by_anyone = is_current_block_selected;
+                    let mut is_current_block_selected_by_anyone =
+                        should_render_local_block_selection;
                     let mut participant_ids_for_avatar_render = vec![];
                     if let Some(presence_manager) = &self.presence_manager {
                         let is_self_reconnecting = presence_manager.as_ref(app).is_reconnecting();
@@ -3924,7 +3932,7 @@ impl Element for BlockListElement {
                                     .push(participant.participant.info.id.clone());
                             }
                             // Don't render any shared session participant background or border if we're rendering our own selection background and border.
-                            if is_current_block_selected {
+                            if should_render_local_block_selection {
                                 continue;
                             }
                             let color: Fill = if is_self_reconnecting {
@@ -4108,13 +4116,18 @@ impl Element for BlockListElement {
                     // the buttons to occlude the prompt text behind it.
                     let is_block_hovered = self.hovered_block_index == Some(*block_index);
 
-                    let block_has_active_filter_icon = self
-                        .filtered_blocks
-                        .as_ref()
-                        .is_some_and(|filtered_blocks| filtered_blocks.contains(block_index))
-                        || self.active_filter_editor_block_index == Some(*block_index);
+                    let should_show_hover_toolbelt =
+                        is_block_hovered && !is_current_block_selected;
+                    let block_has_active_filter_icon = !is_current_block_selected
+                        && (self
+                            .filtered_blocks
+                            .as_ref()
+                            .is_some_and(|filtered_blocks| filtered_blocks.contains(block_index))
+                            || self.active_filter_editor_block_index == Some(*block_index));
                     let show_toolbelt_background =
-                        is_block_hovered || block_has_active_filter_icon || block_is_bookmarked;
+                        should_show_hover_toolbelt
+                            || block_has_active_filter_icon
+                            || block_is_bookmarked;
                     if show_toolbelt_background {
                         let prompt_max_x = match self.label_elements.get_mut(block_index) {
                             // If using the default prompt, use the "label" element's
@@ -4140,7 +4153,7 @@ impl Element for BlockListElement {
                         // it is a background block (output grid could contain long strings overlapping with the toolbelt area).
                         let display_rprompt = block.should_display_rprompt(&size)
                             && !self.label_elements.contains_key(block_index);
-                        if is_block_hovered
+                        if should_show_hover_toolbelt
                             && (prompt_max_x > block_menu_items_start_origin.x()
                                 || display_rprompt
                                 || block.is_background())
@@ -4183,7 +4196,7 @@ impl Element for BlockListElement {
                         }
                     }
 
-                    if is_block_hovered {
+                    if should_show_hover_toolbelt {
                         if let Some(overflow_icon) = self.overflow_menu_button.as_mut() {
                             overflow_icon.paint(overflow_menu_button_origin, ctx, app);
                         }
@@ -4200,8 +4213,10 @@ impl Element for BlockListElement {
                     }
 
                     // When a block has an active filter on it, we want the filter icon to show even when the block is not hovered over.
-                    if let Some(filter_element) = self.filter_elements.get_mut(block_index) {
-                        filter_element.paint(filter_button_origin, ctx, app);
+                    if !is_current_block_selected {
+                        if let Some(filter_element) = self.filter_elements.get_mut(block_index) {
+                            filter_element.paint(filter_button_origin, ctx, app);
+                        }
                     }
 
                     // Paint the CLI subagent view on top of everything else for this block
@@ -4504,26 +4519,35 @@ impl Element for BlockListElement {
             // Element.dispatch_event for more information.)
             let mut handled_by_floating_button = false;
 
-            if let Some(overflow_menu_button) = &mut self.overflow_menu_button {
-                handled_by_floating_button |= overflow_menu_button.dispatch_event(event, ctx, app);
-            }
+            let hovered_block_is_selected = self
+                .hovered_block_index
+                .is_some_and(|block_index| self.selected_blocks.is_selected(block_index));
 
-            if let Some(ask_ai_assistant_button) = &mut self.ask_ai_assistant_button {
-                handled_by_floating_button |=
-                    ask_ai_assistant_button.dispatch_event(event, ctx, app);
-            }
+            if !hovered_block_is_selected {
+                if let Some(overflow_menu_button) = &mut self.overflow_menu_button {
+                    handled_by_floating_button |=
+                        overflow_menu_button.dispatch_event(event, ctx, app);
+                }
 
-            if let Some(save_as_workflow_button) = &mut self.save_as_workflow_button {
-                handled_by_floating_button |=
-                    save_as_workflow_button.dispatch_event(event, ctx, app);
+                if let Some(ask_ai_assistant_button) = &mut self.ask_ai_assistant_button {
+                    handled_by_floating_button |=
+                        ask_ai_assistant_button.dispatch_event(event, ctx, app);
+                }
+
+                if let Some(save_as_workflow_button) = &mut self.save_as_workflow_button {
+                    handled_by_floating_button |=
+                        save_as_workflow_button.dispatch_event(event, ctx, app);
+                }
             }
 
             for bookmark_element in self.bookmark_elements.values_mut() {
                 handled_by_floating_button |= bookmark_element.dispatch_event(event, ctx, app);
             }
 
-            for filter_element in self.filter_elements.values_mut() {
-                handled_by_floating_button |= filter_element.dispatch_event(event, ctx, app);
+            for (block_index, filter_element) in self.filter_elements.iter_mut() {
+                if !self.selected_blocks.is_selected(*block_index) {
+                    handled_by_floating_button |= filter_element.dispatch_event(event, ctx, app);
+                }
             }
 
             if let Some(snackbar_toggle_button) = &mut self.snackbar_toggle_button {

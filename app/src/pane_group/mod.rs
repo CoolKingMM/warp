@@ -875,6 +875,9 @@ pub struct PaneGroup {
     panes: PaneData,
     /// Centralized focus state model. Panes subscribe to this to derive their split pane state.
     focus_state: ModelHandle<focus_state::PaneGroupFocusState>,
+    /// OSS slim project-terminal cycling temporarily renders one terminal at a time. Explicit
+    /// split-pane creation keeps the normal pane tree visible.
+    show_project_terminal_as_single: bool,
     pane_history: Vec<PaneId>,
     /// Mapping from pane IDs to their contents.
     pane_contents: HashMap<PaneId, Box<dyn AnyPaneContent>>,
@@ -3112,6 +3115,7 @@ impl PaneGroup {
             model_event_sender,
             panes: pane_data,
             focus_state,
+            show_project_terminal_as_single: false,
             pane_history,
             pane_contents,
             server_api,
@@ -3844,6 +3848,7 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
+        self.set_show_project_terminal_as_single(false, ctx);
         let new_pane_id = self.add_session(
             direction,
             Some(self.focused_pane_id(ctx)),
@@ -3863,6 +3868,7 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
+        self.set_show_project_terminal_as_single(false, ctx);
         let new_pane_id = self.add_session_with_default_session_mode_behavior(
             direction,
             Some(self.focused_pane_id(ctx)),
@@ -3884,6 +3890,7 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
+        self.set_show_project_terminal_as_single(false, ctx);
         let base_session_id = base_pane_id
             .as_terminal_pane_id()
             .or(self.active_session_id(ctx));
@@ -6411,9 +6418,6 @@ impl PaneGroup {
         let new_pane_id = pane_data.terminal_pane_id();
 
         let _ = self.add_pane(direction, base_pane_id, Box::new(pane_data), true, ctx);
-        if cfg!(feature = "oss_slim") {
-            self.focus_terminal_pane_as_single(new_pane_id.into(), ctx);
-        }
 
         // Enter agent view if default session mode is Agent and AI is enabled
         if should_immediately_enter_agent_view {
@@ -6622,6 +6626,17 @@ impl PaneGroup {
             .collect()
     }
 
+    fn set_show_project_terminal_as_single(
+        &mut self,
+        show_project_terminal_as_single: bool,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        if self.show_project_terminal_as_single != show_project_terminal_as_single {
+            self.show_project_terminal_as_single = show_project_terminal_as_single;
+            ctx.notify();
+        }
+    }
+
     pub fn focus_next_terminal_pane(&mut self, ctx: &mut ViewContext<Self>) -> bool {
         self.focus_adjacent_terminal_pane(true, ctx)
     }
@@ -6642,6 +6657,7 @@ impl PaneGroup {
 
         let focused = self.focused_pane_id(ctx) == pane_id || self.focus_pane(pane_id, true, ctx);
         if focused {
+            self.set_show_project_terminal_as_single(true, ctx);
             self.focus_state.update(ctx, |focus_state, ctx| {
                 focus_state.set_focused_pane_maximized(true, ctx);
             });
@@ -6664,7 +6680,8 @@ impl PaneGroup {
                 None
             }
         };
-        self.add_terminal_pane(Direction::Right, chosen_shell, ctx);
+        let new_pane_id = self.add_terminal_pane(Direction::Right, chosen_shell, ctx);
+        self.focus_terminal_pane_as_single(new_pane_id.into(), ctx);
     }
 
     fn close_project_terminal(&mut self, ctx: &mut ViewContext<Self>) {
@@ -8036,12 +8053,8 @@ impl View for PaneGroup {
 
         let focused_pane_id = self.focused_pane_id(app);
         let visible_terminal_pane_ids = self.visible_terminal_pane_ids(app);
-        let has_visible_non_terminal_pane = cfg!(feature = "oss_slim")
-            && self
-                .visible_pane_ids()
-                .into_iter()
-                .any(|pane_id| !pane_id.is_terminal_pane());
-        let project_terminal_to_show = if cfg!(feature = "oss_slim")
+        let project_terminal_to_show = if self.show_project_terminal_as_single
+            && cfg!(feature = "oss_slim")
             && visible_terminal_pane_ids.len() > 1
         {
             focused_pane_id
@@ -8057,9 +8070,7 @@ impl View for PaneGroup {
             None
         };
 
-        let main_content = if self.is_focused_pane_maximized(app)
-            || (project_terminal_to_show == Some(focused_pane_id) && !has_visible_non_terminal_pane)
-        {
+        let main_content = if self.is_focused_pane_maximized(app) {
             focused_pane_id.render(app)
         } else if let Some(project_terminal_to_show) = project_terminal_to_show {
             let hidden_terminal_panes = visible_terminal_pane_ids

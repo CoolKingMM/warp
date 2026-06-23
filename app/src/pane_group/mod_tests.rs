@@ -732,6 +732,48 @@ fn test_pane_focus_on_close() {
 }
 
 #[test]
+fn test_explicit_terminal_splits_exit_project_terminal_single_view() {
+    if !cfg!(feature = "oss_slim") {
+        return;
+    }
+
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+
+        for pane_event in [
+            PaneEvent::SplitLeft(None),
+            PaneEvent::SplitRight(None),
+            PaneEvent::SplitUp(None),
+            PaneEvent::SplitDown(None),
+        ] {
+            let pane_group = mock_pane_group(&mut app, Default::default());
+
+            pane_group.update(&mut app, |panes, ctx| {
+                let first_pane_id = get_newly_created_pane_id(panes, &[]);
+                panes.add_project_terminal(ctx);
+                let project_terminal_pane_id =
+                    get_newly_created_pane_id(panes, &[first_pane_id]);
+
+                assert!(panes.show_project_terminal_as_single);
+                assert!(panes.is_focused_pane_maximized(ctx));
+
+                let visible_count_before_split = panes.visible_pane_count();
+                panes.handle_pane_event(project_terminal_pane_id, &pane_event, ctx);
+                let split_pane_id = get_newly_created_pane_id(
+                    panes,
+                    &[first_pane_id, project_terminal_pane_id],
+                );
+
+                assert_eq!(panes.visible_pane_count(), visible_count_before_split + 1);
+                assert!(!panes.show_project_terminal_as_single);
+                assert!(!panes.is_focused_pane_maximized(ctx));
+                assert_eq!(panes.focused_pane_id(ctx), split_pane_id);
+            });
+        }
+    });
+}
+
+#[test]
 fn test_insert_hidden_child_agent_pane_keeps_focus_and_active_session() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);

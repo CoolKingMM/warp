@@ -837,6 +837,13 @@ fn test_add_terminal_pane_stays_in_project_terminal_group() {
             assert_eq!(split_group.len(), 2);
             assert!(split_group.contains(&project_terminal_pane_id));
             assert!(split_group.contains(&split_pane_id));
+            assert_eq!(
+                panes.visible_project_terminal_pane_groups(ctx),
+                vec![
+                    vec![first_pane_id],
+                    vec![project_terminal_pane_id, split_pane_id]
+                ]
+            );
 
             assert!(panes.focus_next_terminal_pane(ctx));
             assert_eq!(panes.focused_pane_id(ctx), first_pane_id);

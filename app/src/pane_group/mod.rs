@@ -6675,6 +6675,46 @@ impl PaneGroup {
             .collect()
     }
 
+    pub fn visible_project_terminal_pane_groups(&self, ctx: &AppContext) -> Vec<Vec<PaneId>> {
+        let visible_terminal_pane_ids = self.visible_terminal_pane_ids(ctx);
+        if !cfg!(feature = "oss_slim") || visible_terminal_pane_ids.len() <= 1 {
+            return visible_terminal_pane_ids
+                .into_iter()
+                .map(|pane_id| vec![pane_id])
+                .collect();
+        }
+
+        let candidate_groups = if self.project_terminal_roots.is_empty() {
+            self.panes.root_slot_pane_id_groups()
+        } else {
+            self.project_terminal_roots
+                .iter()
+                .map(|root| self.project_terminal_panes_for_root(*root))
+                .collect()
+        };
+
+        let mut seen = HashSet::new();
+        let mut groups = Vec::new();
+        for group in candidate_groups {
+            let visible_group = group
+                .into_iter()
+                .filter(|pane_id| visible_terminal_pane_ids.contains(pane_id))
+                .filter(|pane_id| seen.insert(*pane_id))
+                .collect::<Vec<_>>();
+            if !visible_group.is_empty() {
+                groups.push(visible_group);
+            }
+        }
+
+        for pane_id in visible_terminal_pane_ids {
+            if seen.insert(pane_id) {
+                groups.push(vec![pane_id]);
+            }
+        }
+
+        groups
+    }
+
     fn set_show_project_terminal_as_single(
         &mut self,
         show_project_terminal_as_single: bool,

@@ -21151,7 +21151,12 @@ impl Workspace {
         let pane_group_handle = self.active_tab_pane_group();
         let pane_group_id = pane_group_handle.id();
         let pane_group = pane_group_handle.as_ref(app);
-        let terminal_pane_ids = pane_group.visible_terminal_pane_ids(app);
+        let terminal_pane_groups = pane_group.visible_project_terminal_pane_groups(app);
+        let terminal_pane_ids = terminal_pane_groups
+            .iter()
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>();
         if terminal_pane_ids.len() <= 1 {
             return None;
         }
@@ -21162,52 +21167,125 @@ impl Workspace {
             .with_cross_axis_alignment(CrossAxisAlignment::Center)
             .with_main_axis_size(MainAxisSize::Min);
 
-        for (index, pane_id) in terminal_pane_ids.into_iter().enumerate() {
-            let is_active = Some(pane_id) == active_pane_id;
-            let label = (index + 1).to_string();
-            let locator = PaneViewLocator {
-                pane_group_id,
-                pane_id,
-            };
-            let ui_font_family = appearance.ui_font_family();
-            let item = Hoverable::new(MouseStateHandle::default(), move |state| {
-                let text_color = if is_active {
-                    theme.active_ui_text_color()
-                } else {
-                    theme.sub_text_color(theme.background())
+        let mut index = 0;
+        for group in terminal_pane_groups {
+            let group_len = group.len();
+            let is_grouped = group_len > 1;
+            let group_has_active = group.iter().any(|pane_id| Some(*pane_id) == active_pane_id);
+            for (group_index, pane_id) in group.into_iter().enumerate() {
+                let is_active = Some(pane_id) == active_pane_id;
+                let label = (index + 1).to_string();
+                let locator = PaneViewLocator {
+                    pane_group_id,
+                    pane_id,
                 };
-                let mut container = Container::new(
-                    Align::new(
-                        Text::new_inline(label.clone(), ui_font_family.clone(), 12.)
-                            .with_color(text_color.into())
-                            .with_style(Properties {
-                                weight: Weight::Semibold,
-                                ..Default::default()
-                            })
+                let ui_font_family = appearance.ui_font_family();
+                let is_first_in_group = group_index == 0;
+                let is_last_in_group = group_index + 1 == group_len;
+
+                let item = Hoverable::new(MouseStateHandle::default(), move |state| {
+                    let text_color = if is_active {
+                        theme.accent()
+                    } else if state.is_hovered() {
+                        theme.active_ui_text_color()
+                    } else {
+                        theme.sub_text_color(theme.background())
+                    };
+                    let connector_color = if group_has_active || state.is_hovered() {
+                        theme.accent()
+                    } else {
+                        internal_colors::fg_overlay_5(theme)
+                    };
+                    let top_connector = if is_grouped && !is_first_in_group {
+                        Rect::new().with_background(connector_color.clone()).finish()
+                    } else {
+                        Empty::new().finish()
+                    };
+                    let bottom_connector = if is_grouped && !is_last_in_group {
+                        Rect::new().with_background(connector_color.clone()).finish()
+                    } else {
+                        Empty::new().finish()
+                    };
+                    let connector_dot = if is_grouped {
+                        Rect::new()
+                            .with_background(connector_color.clone())
+                            .with_corner_radius(CornerRadius::with_all(Radius::Percentage(50.)))
+                            .finish()
+                    } else {
+                        Empty::new().finish()
+                    };
+                    let marker = ConstrainedBox::new(
+                        Flex::column()
+                            .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                            .with_main_axis_size(MainAxisSize::Min)
+                            .with_child(
+                                ConstrainedBox::new(top_connector)
+                                    .with_width(2.)
+                                    .with_height(9.)
+                                    .finish(),
+                            )
+                            .with_child(
+                                ConstrainedBox::new(connector_dot)
+                                    .with_width(4.)
+                                    .with_height(4.)
+                                    .finish(),
+                            )
+                            .with_child(
+                                ConstrainedBox::new(bottom_connector)
+                                    .with_width(2.)
+                                    .with_height(9.)
+                                    .finish(),
+                            )
                             .finish(),
                     )
-                    .finish(),
-                )
-                .with_corner_radius(CornerRadius::with_all(Radius::Pixels(6.)));
-
-                if is_active {
-                    container = container.with_background(internal_colors::fg_overlay_3(theme));
-                } else if state.is_hovered() {
-                    container = container.with_background(internal_colors::fg_overlay_2(theme));
-                }
-
-                ConstrainedBox::new(container.finish())
-                    .with_width(22.)
+                    .with_width(6.)
                     .with_height(22.)
-                    .finish()
-            })
-            .with_cursor(Cursor::PointingHand)
-            .on_click(move |ctx, _, _| {
-                ctx.dispatch_typed_action(WorkspaceAction::FocusTerminalPaneInProject(locator))
-            })
-            .finish();
+                    .finish();
 
-            rail.add_child(Container::new(item).with_margin_bottom(2.).finish());
+                    let mut container = Container::new(
+                        Align::new(
+                            Text::new_inline(label.clone(), ui_font_family.clone(), 12.)
+                                .with_color(text_color.into())
+                                .with_style(Properties {
+                                    weight: Weight::Semibold,
+                                    ..Default::default()
+                                })
+                                .finish(),
+                        )
+                        .finish(),
+                    )
+                    .with_corner_radius(CornerRadius::with_all(Radius::Pixels(6.)));
+
+                    if is_active {
+                        container = container
+                            .with_background(theme.accent().with_opacity(16))
+                            .with_border(
+                                Border::all(1.).with_border_fill(theme.accent().with_opacity(45)),
+                            );
+                    } else if state.is_hovered() {
+                        container = container.with_background(internal_colors::fg_overlay_2(theme));
+                    }
+
+                    let label = ConstrainedBox::new(container.finish())
+                        .with_width(22.)
+                        .with_height(22.)
+                        .finish();
+                    Flex::row()
+                        .with_cross_axis_alignment(CrossAxisAlignment::Center)
+                        .with_main_axis_size(MainAxisSize::Min)
+                        .with_child(marker)
+                        .with_child(Container::new(label).with_margin_left(2.).finish())
+                        .finish()
+                })
+                .with_cursor(Cursor::PointingHand)
+                .on_click(move |ctx, _, _| {
+                    ctx.dispatch_typed_action(WorkspaceAction::FocusTerminalPaneInProject(locator))
+                })
+                .finish();
+
+                rail.add_child(Container::new(item).with_margin_bottom(2.).finish());
+                index += 1;
+            }
         }
 
         Some(
@@ -21218,7 +21296,7 @@ impl Workspace {
                     .with_vertical_padding(6.)
                     .finish(),
             )
-            .with_width(32.)
+            .with_width(40.)
             .finish(),
         )
     }

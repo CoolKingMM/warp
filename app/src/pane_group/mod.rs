@@ -6658,11 +6658,6 @@ impl PaneGroup {
         let focused = self.focused_pane_id(ctx) == pane_id || self.focus_pane(pane_id, true, ctx);
         if focused {
             self.set_show_project_terminal_as_single(true, ctx);
-            self.focus_state.update(ctx, |focus_state, ctx| {
-                focus_state.set_focused_pane_maximized(true, ctx);
-            });
-            ctx.notify();
-            ctx.emit(Event::MaximizePaneToggled);
         }
         focused
     }

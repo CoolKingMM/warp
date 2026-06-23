@@ -755,7 +755,7 @@ fn test_explicit_terminal_splits_exit_project_terminal_single_view() {
                     get_newly_created_pane_id(panes, &[first_pane_id]);
 
                 assert!(panes.show_project_terminal_as_single);
-                assert!(panes.is_focused_pane_maximized(ctx));
+                assert!(!panes.is_focused_pane_maximized(ctx));
 
                 let visible_count_before_split = panes.visible_pane_count();
                 panes.handle_pane_event(project_terminal_pane_id, &pane_event, ctx);

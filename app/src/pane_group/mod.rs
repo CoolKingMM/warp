@@ -3858,15 +3858,23 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
-        self.set_show_project_terminal_as_single(false, ctx);
+        let base_pane_id = self.focused_pane_id(ctx);
+        let preserve_project_terminal_view =
+            self.project_terminal_root_for_pane(base_pane_id).is_some();
+        if !preserve_project_terminal_view {
+            self.set_show_project_terminal_as_single(false, ctx);
+        }
         let new_pane_id = self.add_session(
             direction,
-            Some(self.focused_pane_id(ctx)),
+            Some(base_pane_id),
             self.active_session_id(ctx),
             chosen_shell,
             None, /* conversation_restoration */
             ctx,
         );
+        if preserve_project_terminal_view {
+            self.set_show_project_terminal_as_single(true, ctx);
+        }
         ctx.emit(Event::AppStateChanged);
         new_pane_id
     }
@@ -3878,16 +3886,24 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
-        self.set_show_project_terminal_as_single(false, ctx);
+        let base_pane_id = self.focused_pane_id(ctx);
+        let preserve_project_terminal_view =
+            self.project_terminal_root_for_pane(base_pane_id).is_some();
+        if !preserve_project_terminal_view {
+            self.set_show_project_terminal_as_single(false, ctx);
+        }
         let new_pane_id = self.add_session_with_default_session_mode_behavior(
             direction,
-            Some(self.focused_pane_id(ctx)),
+            Some(base_pane_id),
             self.active_session_id(ctx),
             chosen_shell,
             None, /* conversation_restoration */
             DefaultSessionModeBehavior::Ignore,
             ctx,
         );
+        if preserve_project_terminal_view {
+            self.set_show_project_terminal_as_single(true, ctx);
+        }
         ctx.emit(Event::AppStateChanged);
         new_pane_id
     }

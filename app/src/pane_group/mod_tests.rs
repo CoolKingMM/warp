@@ -799,6 +799,54 @@ fn test_explicit_terminal_splits_stay_in_project_terminal_group() {
 }
 
 #[test]
+fn test_add_terminal_pane_stays_in_project_terminal_group() {
+    if !cfg!(feature = "oss_slim") {
+        return;
+    }
+
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let pane_group = mock_pane_group(&mut app, Default::default());
+
+        pane_group.update(&mut app, |panes, ctx| {
+            let first_pane_id = get_newly_created_pane_id(panes, &[]);
+            panes.add_project_terminal(ctx);
+            let project_terminal_pane_id = get_newly_created_pane_id(panes, &[first_pane_id]);
+
+            assert!(panes.show_project_terminal_as_single);
+            assert_eq!(
+                panes.project_terminal_roots,
+                vec![first_pane_id, project_terminal_pane_id]
+            );
+
+            let split_pane_id = panes.add_terminal_pane(Direction::Right, None, ctx);
+            let split_pane_id = PaneId::from(split_pane_id);
+
+            assert!(panes.show_project_terminal_as_single);
+            assert_eq!(panes.focused_pane_id(ctx), split_pane_id);
+            assert_eq!(
+                panes.project_terminal_roots,
+                vec![first_pane_id, project_terminal_pane_id]
+            );
+
+            let first_group = panes.project_terminal_panes_for_root(first_pane_id);
+            assert_eq!(first_group, vec![first_pane_id]);
+
+            let split_group = panes.project_terminal_panes_for_root(project_terminal_pane_id);
+            assert_eq!(split_group.len(), 2);
+            assert!(split_group.contains(&project_terminal_pane_id));
+            assert!(split_group.contains(&split_pane_id));
+
+            assert!(panes.focus_next_terminal_pane(ctx));
+            assert_eq!(panes.focused_pane_id(ctx), first_pane_id);
+
+            assert!(panes.focus_next_terminal_pane(ctx));
+            assert_eq!(panes.focused_pane_id(ctx), project_terminal_pane_id);
+        });
+    });
+}
+
+#[test]
 fn test_insert_hidden_child_agent_pane_keeps_focus_and_active_session() {
     App::test((), |mut app| async move {
         initialize_app(&mut app);

@@ -1766,6 +1766,8 @@ impl BlockListElement {
                     && self.hovered_secret.is_none()
                     && !self.snackbar_header_state().contains_point(position)
                 {
+                    let should_redetermine_focus =
+                        modifiers.ctrl || modifiers.cmd || modifiers.shift;
                     ctx.dispatch_typed_action(TerminalAction::BlockSelect {
                         action: BlockSelectAction::MouseUp {
                             block_index,
@@ -1773,7 +1775,7 @@ impl BlockListElement {
                             is_cmd_down: modifiers.cmd,
                             is_shift_down: modifiers.shift,
                         },
-                        should_redetermine_focus: true,
+                        should_redetermine_focus,
                     });
                 }
             }

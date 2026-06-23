@@ -3858,14 +3858,13 @@ impl Element for BlockListElement {
                         start_of_continuous_selected_blocks.contains(block_index);
                     let is_bottom_of_continuous_selection =
                         end_of_continuous_selected_blocks.contains(block_index);
-                    let can_be_ai_context = self.ai_render_context.borrow().is_ai_input_enabled
-                        && block.can_be_ai_context(agent_view_state);
                     // Keep block selection behavior intact, but suppress the regular local
-                    // selection chrome. AI context selection still needs a visible affordance.
-                    let should_render_local_block_selection =
-                        is_current_block_selected && can_be_ai_context;
+                    // selection chrome.
+                    let should_render_local_block_selection = false;
 
                     if should_render_local_block_selection {
+                        let can_be_ai_context = self.ai_render_context.borrow().is_ai_input_enabled
+                            && block.can_be_ai_context(agent_view_state);
                         let border_info = compute_border_info(
                             is_singleton,
                             tail_index,
@@ -4116,7 +4115,8 @@ impl Element for BlockListElement {
                     // the buttons to occlude the prompt text behind it.
                     let is_block_hovered = self.hovered_block_index == Some(*block_index);
 
-                    let should_show_hover_toolbelt =
+                    let should_show_hover_toolbelt = is_block_hovered;
+                    let should_show_overflow_button =
                         is_block_hovered && !is_current_block_selected;
                     let block_has_active_filter_icon = !is_current_block_selected
                         && (self
@@ -4197,8 +4197,10 @@ impl Element for BlockListElement {
                     }
 
                     if should_show_hover_toolbelt {
-                        if let Some(overflow_icon) = self.overflow_menu_button.as_mut() {
-                            overflow_icon.paint(overflow_menu_button_origin, ctx, app);
+                        if should_show_overflow_button {
+                            if let Some(overflow_icon) = self.overflow_menu_button.as_mut() {
+                                overflow_icon.paint(overflow_menu_button_origin, ctx, app);
+                            }
                         }
 
                         if let Some(ask_ai_assistant_button) = self.ask_ai_assistant_button.as_mut()
@@ -4528,16 +4530,16 @@ impl Element for BlockListElement {
                     handled_by_floating_button |=
                         overflow_menu_button.dispatch_event(event, ctx, app);
                 }
+            }
 
-                if let Some(ask_ai_assistant_button) = &mut self.ask_ai_assistant_button {
-                    handled_by_floating_button |=
-                        ask_ai_assistant_button.dispatch_event(event, ctx, app);
-                }
+            if let Some(ask_ai_assistant_button) = &mut self.ask_ai_assistant_button {
+                handled_by_floating_button |=
+                    ask_ai_assistant_button.dispatch_event(event, ctx, app);
+            }
 
-                if let Some(save_as_workflow_button) = &mut self.save_as_workflow_button {
-                    handled_by_floating_button |=
-                        save_as_workflow_button.dispatch_event(event, ctx, app);
-                }
+            if let Some(save_as_workflow_button) = &mut self.save_as_workflow_button {
+                handled_by_floating_button |=
+                    save_as_workflow_button.dispatch_event(event, ctx, app);
             }
 
             for bookmark_element in self.bookmark_elements.values_mut() {

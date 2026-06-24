@@ -511,6 +511,17 @@ impl PaneData {
         self.len += 1;
     }
 
+    /// Split the root without flattening the existing root branch.
+    pub fn split_root_preserving_existing_root(&mut self, new_id: PaneId, direction: Direction) {
+        let old_root = mem::replace(&mut self.root, PaneNode::Leaf(new_id));
+        self.root = PaneNode::Branch(PaneBranch::new(
+            old_root,
+            PaneNode::Leaf(new_id),
+            direction,
+        ));
+        self.len += 1;
+    }
+
     pub fn remove(&mut self, content: PaneId) -> bool {
         let successful_remove = self.root.remove(content);
 

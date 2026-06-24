@@ -13,6 +13,7 @@ fn single_tab_snapshot(root: PaneNodeSnapshot) -> AppState {
         windows: vec![WindowSnapshot {
             tabs: vec![TabSnapshot {
                 custom_title: None,
+                project_terminal_root_pane_uuids: None,
                 default_directory_color: None,
                 selected_color: SelectedTabColor::default(),
                 root,
@@ -232,6 +233,7 @@ fn test_config_with_active_tab_index() {
         vec![
             TabSnapshot {
                 custom_title: None,
+                project_terminal_root_pane_uuids: None,
                 default_directory_color: None,
                 selected_color: SelectedTabColor::default(),
                 root: PaneNodeSnapshot::Branch(BranchSnapshot {
@@ -275,6 +277,7 @@ fn test_config_with_active_tab_index_and_filtered_tabs() {
         vec![
             TabSnapshot {
                 custom_title: None,
+                project_terminal_root_pane_uuids: None,
                 default_directory_color: None,
                 selected_color: SelectedTabColor::default(),
                 root: PaneNodeSnapshot::Branch(BranchSnapshot {
@@ -297,6 +300,7 @@ fn test_config_with_active_tab_index_and_filtered_tabs() {
             },
             TabSnapshot {
                 custom_title: None,
+                project_terminal_root_pane_uuids: None,
                 default_directory_color: None,
                 selected_color: SelectedTabColor::default(),
                 root: PaneNodeSnapshot::Branch(BranchSnapshot {
@@ -339,6 +343,7 @@ fn test_config_with_active_tab_being_filtered() {
         vec![
             TabSnapshot {
                 custom_title: None,
+                project_terminal_root_pane_uuids: None,
                 default_directory_color: None,
                 selected_color: SelectedTabColor::default(),
                 root: PaneNodeSnapshot::Branch(BranchSnapshot {
@@ -369,6 +374,7 @@ fn test_config_with_active_tab_being_filtered() {
             },
             TabSnapshot {
                 custom_title: None,
+                project_terminal_root_pane_uuids: None,
                 default_directory_color: None,
                 selected_color: SelectedTabColor::default(),
                 root: PaneNodeSnapshot::Branch(BranchSnapshot {

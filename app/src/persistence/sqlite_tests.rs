@@ -17,7 +17,7 @@ use super::{
 };
 use crate::app_state::{
     AppState, CodePaneSnapShot, CodePaneTabSnapshot, LeafContents, LeafSnapshot, PaneNodeSnapshot,
-    TabGroupSnapshot, TabSnapshot, TerminalPaneSnapshot, WindowSnapshot,
+    PaneUuid, TabGroupSnapshot, TabSnapshot, TerminalPaneSnapshot, WindowSnapshot,
 };
 use crate::cloud_object::{CloudObjectPermissions, Owner};
 use crate::code::editor_management::CodeSource;
@@ -259,6 +259,7 @@ fn test_terminal_window_snapshot(vertical_tabs_panel_open: bool) -> WindowSnapsh
     WindowSnapshot {
         tabs: vec![TabSnapshot {
             custom_title: None,
+            project_terminal_root_pane_uuids: None,
             root: PaneNodeSnapshot::Leaf(LeafSnapshot {
                 is_focused: true,
                 custom_vertical_tabs_title: None,
@@ -344,6 +345,7 @@ fn test_sqlite_round_trips_custom_vertical_tabs_title() {
         windows: vec![WindowSnapshot {
             tabs: vec![TabSnapshot {
                 custom_title: None,
+                project_terminal_root_pane_uuids: None,
                 root: PaneNodeSnapshot::Leaf(LeafSnapshot {
                     is_focused: true,
                     custom_vertical_tabs_title: Some("Production API".to_string()),
@@ -409,6 +411,34 @@ fn test_sqlite_round_trips_custom_vertical_tabs_title() {
 }
 
 #[test]
+fn test_sqlite_round_trips_project_terminal_root_pane_uuids() {
+    let tempdir = tempfile::tempdir().expect("tempdir should be created");
+    let database_path = tempdir.path().join("warp.sqlite");
+    let mut conn = setup_database(&database_path).expect("database should initialize");
+
+    let expected_roots = vec![PaneUuid(vec![1, 2, 3]), PaneUuid(vec![4, 5, 6])];
+    let mut window = test_terminal_window_snapshot(false);
+    window.tabs[0].project_terminal_root_pane_uuids = Some(expected_roots.clone());
+    let app_state = AppState {
+        windows: vec![window],
+        active_window_index: Some(0),
+        block_lists: Default::default(),
+        running_mcp_servers: Default::default(),
+    };
+
+    save_app_state(&mut conn, &app_state).expect("app state should save");
+
+    let restored = read_sqlite_data(&mut conn, None)
+        .expect("app state should load")
+        .app_state;
+
+    assert_eq!(
+        restored.windows[0].tabs[0].project_terminal_root_pane_uuids,
+        Some(expected_roots)
+    );
+}
+
+#[test]
 fn test_sqlite_round_trips_code_pane_with_multiple_tabs() {
     let tempdir = tempfile::tempdir().expect("tempdir should be created");
     let database_path = tempdir.path().join("warp.sqlite");
@@ -418,6 +448,7 @@ fn test_sqlite_round_trips_code_pane_with_multiple_tabs() {
         windows: vec![WindowSnapshot {
             tabs: vec![TabSnapshot {
                 custom_title: None,
+                project_terminal_root_pane_uuids: None,
                 root: PaneNodeSnapshot::Leaf(LeafSnapshot {
                     is_focused: true,
                     custom_vertical_tabs_title: None,
@@ -504,6 +535,7 @@ fn test_sqlite_round_trips_tab_groups() {
     let group_id = TabGroupId::new();
     let tab_in_group = TabSnapshot {
         custom_title: None,
+        project_terminal_root_pane_uuids: None,
         root: PaneNodeSnapshot::Leaf(LeafSnapshot {
             is_focused: true,
             custom_vertical_tabs_title: None,
@@ -531,6 +563,7 @@ fn test_sqlite_round_trips_tab_groups() {
     };
     let tab_outside_group = TabSnapshot {
         custom_title: None,
+        project_terminal_root_pane_uuids: None,
         root: PaneNodeSnapshot::Leaf(LeafSnapshot {
             is_focused: false,
             custom_vertical_tabs_title: None,

@@ -350,6 +350,7 @@ pub struct Tab {
     pub custom_title: Option<String>,
     pub color: Option<String>,
     pub tab_group_id: Option<i32>,
+    pub project_terminal_root_pane_uuids: Option<String>,
 }
 
 #[derive(Insertable)]
@@ -359,6 +360,7 @@ pub struct NewTab {
     pub custom_title: Option<String>,
     pub color: Option<String>,
     pub tab_group_id: Option<i32>,
+    pub project_terminal_root_pane_uuids: Option<String>,
 }
 
 /// Persisted form of a tab group. `name` is optional — untitled groups omit

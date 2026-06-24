@@ -74,6 +74,10 @@ pub struct TabGroupSnapshot {
 pub struct TabSnapshot {
     pub custom_title: Option<String>,
     pub root: PaneNodeSnapshot,
+    /// OSS slim-only metadata that preserves which terminal panes are project-terminal roots.
+    /// `None` means the snapshot predates this metadata and restore may use a compatibility
+    /// inference. `Some(vec![])` means this tab intentionally has no project-terminal roots.
+    pub project_terminal_root_pane_uuids: Option<Vec<PaneUuid>>,
     pub default_directory_color: Option<AnsiColorIdentifier>,
     pub selected_color: SelectedTabColor,
     pub left_panel: Option<LeftPanelSnapshot>,

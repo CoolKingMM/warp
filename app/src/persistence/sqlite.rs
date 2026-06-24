@@ -72,7 +72,7 @@ use crate::ai::persisted_workspace::EnablementState;
 use crate::app_state::{
     AIFactPaneSnapshot, AmbientAgentPaneSnapshot, AppState, BranchSnapshot, CodePaneSnapShot,
     CodePaneTabSnapshot, CodeReviewPaneSnapshot, EnvVarCollectionPaneSnapshot, LeafContents,
-    LeafSnapshot, LeftPanelSnapshot, NotebookPaneSnapshot, PaneFlex, PaneNodeSnapshot,
+    LeafSnapshot, LeftPanelSnapshot, NotebookPaneSnapshot, PaneFlex, PaneNodeSnapshot, PaneUuid,
     RightPanelSnapshot, SettingsPaneSnapshot, SplitDirection, TabGroupSnapshot, TabSnapshot,
     TerminalPaneSnapshot, WindowSnapshot, WorkflowPaneSnapshot,
 };
@@ -981,6 +981,16 @@ fn save_app_state(conn: &mut SqliteConnection, app_state: &AppState) -> Result<(
                     tab_group_id: tab
                         .group_id
                         .and_then(|group_id| tab_group_row_ids.get(&group_id).copied()),
+                    project_terminal_root_pane_uuids: tab
+                        .project_terminal_root_pane_uuids
+                        .as_ref()
+                        .and_then(|roots| {
+                            let root_bytes = roots
+                                .iter()
+                                .map(|uuid| uuid.0.clone())
+                                .collect::<Vec<_>>();
+                            serde_json::to_string(&root_bytes).ok()
+                        }),
                 })
                 .collect();
 
@@ -2500,9 +2510,18 @@ fn read_sqlite_data(
                         let group_id = tab
                             .tab_group_id
                             .and_then(|row_id| tab_group_id_by_row_id.get(&row_id).copied());
+                        let project_terminal_root_pane_uuids = tab
+                            .project_terminal_root_pane_uuids
+                            .as_deref()
+                            .and_then(|serialized| {
+                                serde_json::from_str::<Vec<Vec<u8>>>(serialized)
+                                    .ok()
+                                    .map(|uuids| uuids.into_iter().map(PaneUuid).collect())
+                            });
                         Some(TabSnapshot {
                             root,
                             custom_title: tab.custom_title,
+                            project_terminal_root_pane_uuids,
                             default_directory_color: None,
                             selected_color: tab
                                 .color

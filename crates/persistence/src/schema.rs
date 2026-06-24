@@ -371,6 +371,7 @@ diesel::table! {
         custom_title -> Nullable<Text>,
         color -> Nullable<Text>,
         tab_group_id -> Nullable<Integer>,
+        project_terminal_root_pane_uuids -> Nullable<Text>,
     }
 }
 

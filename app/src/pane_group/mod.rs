@@ -3858,7 +3858,6 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
-        self.ensure_project_terminal_roots(ctx);
         let base_pane_id = self.focused_pane_id(ctx);
         let preserve_project_terminal_view =
             self.project_terminal_root_for_pane(base_pane_id).is_some();
@@ -3887,7 +3886,6 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
-        self.ensure_project_terminal_roots(ctx);
         let base_pane_id = self.focused_pane_id(ctx);
         let preserve_project_terminal_view =
             self.project_terminal_root_for_pane(base_pane_id).is_some();
@@ -3918,7 +3916,6 @@ impl PaneGroup {
         chosen_shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) -> TerminalPaneId {
-        self.ensure_project_terminal_roots(ctx);
         let preserve_project_terminal_view =
             self.project_terminal_root_for_pane(base_pane_id).is_some();
         if !preserve_project_terminal_view {
@@ -6826,13 +6823,18 @@ impl PaneGroup {
         pane_id: PaneId,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
-        self.ensure_project_terminal_roots(ctx);
+        if self.show_project_terminal_as_single {
+            self.ensure_project_terminal_roots(ctx);
+        }
+
         let roots = self.project_terminal_roots.clone();
         if roots.is_empty() {
             let pane_ids = self.visible_terminal_pane_ids(ctx);
             if pane_ids.len() <= 1 || !pane_ids.contains(&pane_id) {
                 return false;
             }
+
+            return self.focused_pane_id(ctx) == pane_id || self.focus_pane(pane_id, true, ctx);
         } else if self.project_terminal_root_for_pane(pane_id).is_none() {
             return false;
         }
@@ -6902,11 +6904,18 @@ impl PaneGroup {
         forward: bool,
         ctx: &mut ViewContext<Self>,
     ) -> bool {
-        self.ensure_project_terminal_roots(ctx);
-        let pane_ids = if self.project_terminal_roots.is_empty() {
-            self.visible_terminal_pane_ids(ctx)
+        if self.show_project_terminal_as_single {
+            self.ensure_project_terminal_roots(ctx);
+        }
+
+        let has_project_terminal_roots = !self.project_terminal_roots.is_empty();
+        let pane_ids = if has_project_terminal_roots {
+            self.visible_project_terminal_pane_groups(ctx)
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
         } else {
-            self.project_terminal_roots.clone()
+            self.visible_terminal_pane_ids(ctx)
         };
         if pane_ids.len() <= 1 {
             return false;
@@ -6915,10 +6924,7 @@ impl PaneGroup {
         let active_pane_id = self
             .active_session_id(ctx)
             .map(Into::into)
-            .and_then(|pane_id| {
-                self.project_terminal_root_for_pane(pane_id)
-                    .or_else(|| pane_ids.contains(&pane_id).then_some(pane_id))
-            })
+            .filter(|pane_id| pane_ids.contains(pane_id))
             .unwrap_or_else(|| self.focused_pane_id(ctx));
         let current_index = pane_ids
             .iter()
@@ -6932,7 +6938,13 @@ impl PaneGroup {
             current_index - 1
         };
 
-        self.focus_terminal_pane_as_single(pane_ids[target_index], ctx)
+        let target_pane_id = pane_ids[target_index];
+        if has_project_terminal_roots {
+            self.focus_terminal_pane_as_single(target_pane_id, ctx)
+        } else {
+            self.focused_pane_id(ctx) == target_pane_id
+                || self.focus_pane(target_pane_id, true, ctx)
+        }
     }
 
     /// Returns the count of visible panes (excluding hidden panes).

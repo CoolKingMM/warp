@@ -793,8 +793,42 @@ fn test_explicit_terminal_splits_stay_in_project_terminal_group() {
                 assert!(panes.focus_next_terminal_pane(ctx));
                 assert_eq!(panes.focused_pane_id(ctx), project_terminal_pane_id);
                 assert!(panes.show_project_terminal_as_single);
+
+                assert!(panes.focus_next_terminal_pane(ctx));
+                assert_eq!(panes.focused_pane_id(ctx), split_pane_id);
+                assert!(panes.show_project_terminal_as_single);
             });
         }
+    });
+}
+
+#[test]
+fn test_single_terminal_split_stays_normal_and_page_switches_split_panes() {
+    if !cfg!(feature = "oss_slim") {
+        return;
+    }
+
+    App::test((), |mut app| async move {
+        initialize_app(&mut app);
+        let pane_group = mock_pane_group(&mut app, Default::default());
+
+        pane_group.update(&mut app, |panes, ctx| {
+            let first_pane_id = get_newly_created_pane_id(panes, &[]);
+            let split_pane_id = PaneId::from(panes.add_terminal_pane(Direction::Right, None, ctx));
+
+            assert_eq!(panes.visible_pane_count(), 2);
+            assert_eq!(panes.focused_pane_id(ctx), split_pane_id);
+            assert!(!panes.show_project_terminal_as_single);
+            assert!(panes.project_terminal_roots.is_empty());
+
+            assert!(panes.focus_next_terminal_pane(ctx));
+            assert_eq!(panes.focused_pane_id(ctx), first_pane_id);
+            assert!(!panes.show_project_terminal_as_single);
+
+            assert!(panes.focus_next_terminal_pane(ctx));
+            assert_eq!(panes.focused_pane_id(ctx), split_pane_id);
+            assert!(!panes.show_project_terminal_as_single);
+        });
     });
 }
 
@@ -818,7 +852,6 @@ fn test_add_terminal_pane_stays_in_project_terminal_group() {
                 panes.project_terminal_roots,
                 vec![first_pane_id, project_terminal_pane_id]
             );
-            panes.project_terminal_roots.clear();
 
             let split_pane_id = panes.add_terminal_pane(Direction::Right, None, ctx);
             let split_pane_id = PaneId::from(split_pane_id);
@@ -850,6 +883,9 @@ fn test_add_terminal_pane_stays_in_project_terminal_group() {
 
             assert!(panes.focus_next_terminal_pane(ctx));
             assert_eq!(panes.focused_pane_id(ctx), project_terminal_pane_id);
+
+            assert!(panes.focus_next_terminal_pane(ctx));
+            assert_eq!(panes.focused_pane_id(ctx), split_pane_id);
         });
     });
 }

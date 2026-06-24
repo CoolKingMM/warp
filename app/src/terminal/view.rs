@@ -16583,16 +16583,18 @@ impl TerminalView {
             )
         };
 
-        let is_cli_agent_paste =
-            !should_paste_in_input && !middle_click && self.has_active_cli_agent_session(ctx);
-        let should_send_windows_alt_v = is_cli_agent_paste
+        let is_direct_cli_agent_paste = !middle_click
+            && self.has_active_cli_agent_session(ctx)
+            && !self.has_active_cli_agent_input_session(ctx);
+        let is_cli_agent_pty_paste = is_direct_cli_agent_paste && !should_paste_in_input;
+        let should_send_windows_alt_v = is_direct_cli_agent_paste
             && cfg!(windows)
             && self.active_cli_agent_uses_windows_alt_v_for_image_paste(ctx);
 
         // If we're pasting into a CLI coding agent (e.g. Claude Code) that has its own native
         // handling for pasted file paths and images, skip shell-escaping and let the agent
         // see https://github.com/anthropics/claude-code/issues/18590.
-        let shell_family = if is_cli_agent_paste {
+        let shell_family = if is_cli_agent_pty_paste {
             None
         } else {
             Some(self.shell_family(ctx))
@@ -16602,12 +16604,26 @@ impl TerminalView {
         } else {
             let clipboard_content = ctx.clipboard().read();
 
-            if should_send_windows_alt_v && clipboard_content.is_empty() {
+            if is_direct_cli_agent_paste {
+                let image_filepaths = get_image_filepaths_from_paths(
+                    clipboard_content.paths.as_deref().unwrap_or(&[]),
+                );
+                if !image_filepaths.is_empty()
+                    && image_filepaths.len() == clipboard_content.num_paths()
+                {
+                    self.paste_image_files_to_cli_agent(image_filepaths, ctx);
+                    return;
+                }
+            }
+
+            if should_send_windows_alt_v
+                && TerminalView::clipboard_content_may_be_unresolved_image(&clipboard_content)
+            {
                 self.write_user_bytes_to_pty(vec![escape_sequences::C0::ESC, b'v'], ctx);
                 return;
             }
 
-            if is_cli_agent_paste && clipboard_content.has_image_data() {
+            if is_direct_cli_agent_paste && clipboard_content.has_image_data() {
                 if !cfg!(windows) {
                     self.write_user_bytes_to_pty(vec![escape_sequences::C0::SYN], ctx);
                     return;
@@ -16623,18 +16639,6 @@ impl TerminalView {
                 // bracketed paste is enabled (true for TUI-based CLI agents), the empty-text paste
                 // sends \x1b[200~\x1b[201~ to the PTY. The agent interprets this as a "paste
                 // happened" signal and reads the Windows clipboard directly for image data.
-            }
-
-            if is_cli_agent_paste {
-                let image_filepaths = get_image_filepaths_from_paths(
-                    clipboard_content.paths.as_deref().unwrap_or(&[]),
-                );
-                if !image_filepaths.is_empty()
-                    && image_filepaths.len() == clipboard_content.num_paths()
-                {
-                    self.paste_image_files_to_cli_agent(image_filepaths, ctx);
-                    return;
-                }
             }
 
             clipboard_content_with_escaped_paths(clipboard_content, shell_family, false)
@@ -16670,6 +16674,12 @@ impl TerminalView {
         CLIAgentSessionsModel::as_ref(ctx)
             .session(self.view_id)
             .is_some_and(|s| matches!(s.agent, CLIAgent::Claude | CLIAgent::Codex))
+    }
+
+    fn clipboard_content_may_be_unresolved_image(clipboard_content: &ClipboardContent) -> bool {
+        clipboard_content.has_image_data()
+            || (clipboard_content.plain_text.trim().is_empty()
+                && clipboard_content.num_paths() == 0)
     }
 
     fn has_active_cli_agent_session(&self, ctx: &AppContext) -> bool {

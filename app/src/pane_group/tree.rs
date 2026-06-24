@@ -4,6 +4,7 @@ use std::{fmt, iter, mem};
 use pathfinder_geometry::rect::RectF;
 use pathfinder_geometry::vector::Vector2F;
 use warp_core::features::FeatureFlag;
+use warp_core::ui::theme::Fill;
 use warpui::elements::{
     ChildAnchor, ConstrainedBox, Container, DispatchEventResult, Element, Empty, EventHandler,
     Flex, Hoverable, MouseStateHandle, OffsetPositioning, ParentAnchor, ParentElement,
@@ -741,6 +742,15 @@ impl PaneNode {
         }
     }
 
+    fn visible_children_are_terminal_panes(&self, hidden_panes: &[HiddenPane]) -> bool {
+        match self {
+            PaneNode::Leaf(pane_id) => {
+                self.has_visible_children(hidden_panes) && pane_id.is_terminal_pane()
+            }
+            PaneNode::Branch(branch) => branch.visible_children_are_terminal_panes(hidden_panes),
+        }
+    }
+
     pub fn has_horizontal_split(&self, hidden_panes: &[HiddenPane]) -> bool {
         match self {
             PaneNode::Leaf(_) => false,
@@ -1182,7 +1192,7 @@ impl PaneBranch {
         // Collect divider positions to render them as positioned elements later.
         let mut divider_positions = Vec::new();
 
-        for (flex, node) in self.nodes.iter() {
+        for (idx, (flex, node)) in self.nodes.iter().enumerate() {
             // Skip nodes that have no visible children, but preserve nodes with children
             // hidden for move operations as they serve as drop targets
             if !node.has_visible_children(hidden_panes)
@@ -1216,7 +1226,17 @@ impl PaneBranch {
                 // cannot use an overlay because content like right click menus that overflow over
                 // the divider should still take precedence over the divider's clickbox.
                 let position_id = format!("divider_placeholder_{}", divider.id);
-                divider_positions.push((divider, position_id.clone()));
+                let next_visible_node = self
+                    .nodes
+                    .iter()
+                    .skip(idx + 1)
+                    .map(|(_, node)| node)
+                    .find(|node| node.has_visible_children(hidden_panes));
+                let is_terminal_divider = node.visible_children_are_terminal_panes(hidden_panes)
+                    && next_visible_node.is_some_and(|node| {
+                        node.visible_children_are_terminal_panes(hidden_panes)
+                    });
+                divider_positions.push((divider, position_id.clone(), is_terminal_divider));
                 parent.add_child(create_divider_placeholder(self.axis, &position_id));
             }
         }
@@ -1225,11 +1245,15 @@ impl PaneBranch {
 
         // Add actual dividers as positioned children anchored to their placeholders
         // (the reason we have to do it this way is explained in the large comment above)
-        for (divider, position_id) in divider_positions {
+        for (divider, position_id, is_terminal_divider) in divider_positions {
             let divider_element = if FeatureFlag::MinimalistUI.is_enabled() {
-                create_minimalist_divider(self.axis, divider, theme)
+                create_minimalist_divider(
+                    self.axis,
+                    divider,
+                    divider_fill(theme, is_terminal_divider),
+                )
             } else {
-                create_divider(self.axis, divider, theme)
+                create_divider(self.axis, divider, divider_fill(theme, is_terminal_divider))
             };
 
             stack.add_positioned_child(
@@ -1428,6 +1452,20 @@ impl PaneBranch {
             .iter()
             .any(|(_, node)| node.has_children_hidden_for_move(hidden_panes))
     }
+
+    fn visible_children_are_terminal_panes(&self, hidden_panes: &[HiddenPane]) -> bool {
+        let mut has_visible_children = false;
+        for (_, node) in &self.nodes {
+            if !node.has_visible_children(hidden_panes) {
+                continue;
+            }
+            has_visible_children = true;
+            if !node.visible_children_are_terminal_panes(hidden_panes) {
+                return false;
+            }
+        }
+        has_visible_children
+    }
 }
 
 fn pane_hidden_for_job(hidden_panes: &[HiddenPane], id: &PaneId) -> bool {
@@ -1529,15 +1567,17 @@ fn divider_mouse_down_action(
     }
 }
 
-fn create_divider(
-    direction: SplitDirection,
-    item: &Divider,
-    theme: &WarpTheme,
-) -> Box<dyn Element> {
+fn divider_fill(theme: &WarpTheme, is_terminal_divider: bool) -> Fill {
+    if is_terminal_divider {
+        Fill::Solid(theme.terminal_colors().normal.yellow.into())
+    } else {
+        theme.split_pane_border_color()
+    }
+}
+
+fn create_divider(direction: SplitDirection, item: &Divider, fill: Fill) -> Box<dyn Element> {
     let divider = ConstrainedBox::new(
-        Rect::new()
-            .with_background(theme.split_pane_border_color())
-            .finish(),
+        Rect::new().with_background(fill).finish(),
     );
 
     let cursor_shape = match direction {
@@ -1568,12 +1608,10 @@ fn create_divider(
 fn create_minimalist_divider(
     direction: SplitDirection,
     item: &Divider,
-    theme: &WarpTheme,
+    fill: Fill,
 ) -> Box<dyn Element> {
     let divider = ConstrainedBox::new(
-        Rect::new()
-            .with_background(theme.split_pane_border_color())
-            .finish(),
+        Rect::new().with_background(fill).finish(),
     );
 
     let cursor_shape = match direction {

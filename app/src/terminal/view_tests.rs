@@ -5850,7 +5850,7 @@ fn paste_raw_image_clipboard_in_cli_agent_sends_correct_bytes() {
             );
 
             if cfg!(windows) {
-                if agent == CLIAgent::Claude {
+                if matches!(agent, CLIAgent::Claude | CLIAgent::Codex) {
                     assert_eq!(writes[0], vec![C0::ESC, b'v']);
                 } else {
                     let mut expected = Vec::new();
@@ -5867,6 +5867,152 @@ fn paste_raw_image_clipboard_in_cli_agent_sends_correct_bytes() {
     run_for_agent(CLIAgent::Claude);
     run_for_agent(CLIAgent::OpenCode);
     run_for_agent(CLIAgent::Codex);
+}
+
+#[test]
+fn paste_image_file_clipboard_in_codex_and_claude_pastes_via_clipboard() {
+    fn run_for_agent(agent: CLIAgent) {
+        App::test((), move |mut app| async move {
+            initialize_app_for_terminal_view(&mut app);
+            let _agent_view = FeatureFlag::AgentView.override_enabled(true);
+
+            let temp_dir = tempfile::tempdir().expect("create temp dir");
+            let image_path = temp_dir.path().join(format!(
+                "warp-test-cli-agent-clipboard-{}.png",
+                agent.to_serialized_name()
+            ));
+            std::fs::write(&image_path, b"fake-png-bytes").expect("write tmp image");
+            let image_path_str = image_path.to_string_lossy().into_owned();
+
+            let terminal = add_window_with_terminal(&mut app, None);
+
+            let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+            let writes = pty_writes.clone();
+            app.update(|ctx| {
+                ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                    if let Event::WriteBytesToPty { bytes } = event {
+                        writes.borrow_mut().push(bytes.to_vec());
+                    }
+                });
+            });
+
+            terminal.update(&mut app, |view, ctx| {
+                CLIAgentSessionsModel::handle(ctx).update(ctx, |sessions, ctx| {
+                    sessions.set_session(
+                        view.view_id,
+                        CLIAgentSession {
+                            agent,
+                            status: CLIAgentSessionStatus::InProgress,
+                            session_context: CLIAgentSessionContext::default(),
+                            input_state: CLIAgentInputState::Closed,
+                            should_auto_toggle_input: false,
+                            listener: None,
+                            remote_host: None,
+                            plugin_version: None,
+                            draft_text: None,
+                            custom_command_prefix: None,
+                            received_rich_notification: false,
+                        },
+                        ctx,
+                    );
+                });
+
+                {
+                    let mut model = view.model.lock();
+                    model.simulate_long_running_block(agent.command_prefix(), "");
+                    model.set_mode(ansi::Mode::BracketedPaste);
+                }
+
+                ctx.clipboard().write(ClipboardContent {
+                    paths: Some(vec![image_path_str]),
+                    ..Default::default()
+                });
+
+                view.handle_action(&TerminalAction::Paste, ctx);
+            });
+
+            let expected_paste_bytes: Vec<u8> = if cfg!(windows) {
+                vec![C0::ESC, b'v']
+            } else {
+                vec![C0::SYN]
+            };
+            assert_eventually!(
+                pty_writes.borrow().len() == 1 && pty_writes.borrow()[0] == expected_paste_bytes,
+                "expected single paste-keystroke PTY write {:?}; got {:?}",
+                expected_paste_bytes,
+                pty_writes.borrow()
+            );
+        })
+    }
+
+    run_for_agent(CLIAgent::Claude);
+    run_for_agent(CLIAgent::Codex);
+}
+
+#[test]
+fn paste_mixed_file_clipboard_in_cli_agent_keeps_path_text() {
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
+
+        let terminal = add_window_with_terminal(&mut app, None);
+
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        terminal.update(&mut app, |view, ctx| {
+            CLIAgentSessionsModel::handle(ctx).update(ctx, |sessions, ctx| {
+                sessions.set_session(
+                    view.view_id,
+                    CLIAgentSession {
+                        agent: CLIAgent::Codex,
+                        status: CLIAgentSessionStatus::InProgress,
+                        session_context: CLIAgentSessionContext::default(),
+                        input_state: CLIAgentInputState::Closed,
+                        should_auto_toggle_input: false,
+                        listener: None,
+                        remote_host: None,
+                        plugin_version: None,
+                        draft_text: None,
+                        custom_command_prefix: None,
+                        received_rich_notification: false,
+                    },
+                    ctx,
+                );
+            });
+
+            {
+                let mut model = view.model.lock();
+                model.simulate_long_running_block(CLIAgent::Codex.command_prefix(), "");
+                model.set_mode(ansi::Mode::BracketedPaste);
+            }
+
+            ctx.clipboard().write(ClipboardContent {
+                paths: Some(vec![
+                    "C:\\tmp\\screenshot.png".to_string(),
+                    "C:\\tmp\\notes.txt".to_string(),
+                ]),
+                ..Default::default()
+            });
+
+            view.handle_action(&TerminalAction::Paste, ctx);
+        });
+
+        let writes = pty_writes.borrow();
+        assert_eq!(writes.len(), 1, "expected path text paste, got {writes:?}");
+        let mut expected = Vec::new();
+        expected.extend_from_slice(BRACKETED_PASTE_START);
+        expected.extend_from_slice(b"C:\\tmp\\screenshot.png C:\\tmp\\notes.txt");
+        expected.extend_from_slice(BRACKETED_PASTE_END);
+        assert_eq!(writes[0], expected);
+    })
 }
 
 #[test]

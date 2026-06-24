@@ -89,9 +89,9 @@ const CLI_AGENT_IMAGE_PASTE_DELAY: Duration = Duration::from_millis(300);
 const CLI_AGENT_MODE_SWITCH_PREFIXES: &[u8] = &[b'!', b'&'];
 
 /// Bytes that simulate a "paste image from clipboard" keystroke for the
-/// foreground CLI agent. `0x16` is `Ctrl+V` (SYN); on Windows Claude Code
-/// listens for `Alt+V` (`ESC` + `'v'`) instead. Mirrored from the equivalent
-/// branch in `TerminalView::paste`.
+/// foreground CLI agent. `0x16` is `Ctrl+V` (SYN); on Windows CLI agents such
+/// as Claude Code and Codex listen for `Alt+V` (`ESC` + `'v'`) instead.
+/// Mirrored from the equivalent branch in `TerminalView::paste`.
 fn cli_agent_paste_keystroke_bytes() -> Vec<u8> {
     if cfg!(windows) {
         vec![0x1b, b'v']
@@ -833,13 +833,13 @@ impl TerminalView {
         );
     }
 
-    /// Mirrors the CLI-agent Cmd+V image-paste path in `TerminalView::paste`
-    /// for dropped image files: reads each file, writes its bytes to the
+    /// Mirrors the CLI-agent image-paste path in `TerminalView::paste`
+    /// for image file paths: reads each file, writes its bytes to the
     /// system clipboard as image data, and sends the agent's paste keystroke
     /// to the PTY so the agent reads the image directly. This produces the
     /// same outcome as if the user had copied the image to their clipboard
-    /// and pressed Cmd+V over the agent's TUI.
-    pub(super) fn paste_dropped_images_to_cli_agent(
+    /// and pressed the image paste shortcut over the agent's TUI.
+    pub(super) fn paste_image_files_to_cli_agent(
         &mut self,
         image_filepaths: Vec<String>,
         ctx: &mut ViewContext<Self>,

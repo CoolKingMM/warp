@@ -16597,11 +16597,11 @@ impl TerminalView {
                     return;
                 }
 
-                // On Windows, Claude Code uses Alt+V for native image paste.
-                let is_claude = CLIAgentSessionsModel::as_ref(ctx)
+                // On Windows, Claude Code and Codex use Alt+V for native image paste.
+                let should_send_alt_v = CLIAgentSessionsModel::as_ref(ctx)
                     .session(self.view_id)
-                    .is_some_and(|s| s.agent == CLIAgent::Claude);
-                if is_claude {
+                    .is_some_and(|s| matches!(s.agent, CLIAgent::Claude | CLIAgent::Codex));
+                if should_send_alt_v {
                     self.write_user_bytes_to_pty(vec![escape_sequences::C0::ESC, b'v'], ctx);
                     return;
                 }
@@ -16610,6 +16610,18 @@ impl TerminalView {
                 // bracketed paste is enabled (true for TUI-based CLI agents), the empty-text paste
                 // sends \x1b[200~\x1b[201~ to the PTY. The agent interprets this as a "paste
                 // happened" signal and reads the Windows clipboard directly for image data.
+            }
+
+            if is_cli_agent_paste {
+                let image_filepaths = get_image_filepaths_from_paths(
+                    clipboard_content.paths.as_deref().unwrap_or(&[]),
+                );
+                if !image_filepaths.is_empty()
+                    && image_filepaths.len() == clipboard_content.num_paths()
+                {
+                    self.paste_image_files_to_cli_agent(image_filepaths, ctx);
+                    return;
+                }
             }
 
             clipboard_content_with_escaped_paths(clipboard_content, shell_family, false)
@@ -25661,7 +25673,7 @@ impl TerminalView {
         // CLI-agent paste path: when a CLI agent (e.g. Claude Code) is the
         // foreground long-running process and the user is interacting with its
         // TUI directly (rich input closed), hand image drops to the agent the
-        // same way Cmd+V does at `TerminalView::paste` — write each image to
+        // same way the image paste path does — write each image to
         // the system clipboard and send the agent's paste keystroke to the
         // PTY. Without this branch the path string would be shell-escaped and
         // typed into the agent's prompt. When the rich input is open we leave
@@ -25673,7 +25685,7 @@ impl TerminalView {
             && self.has_active_cli_agent_session(ctx)
             && !CLIAgentSessionsModel::as_ref(ctx).is_input_open(self.view_id)
         {
-            self.paste_dropped_images_to_cli_agent(image_filepaths, ctx);
+            self.paste_image_files_to_cli_agent(image_filepaths, ctx);
             return;
         }
 

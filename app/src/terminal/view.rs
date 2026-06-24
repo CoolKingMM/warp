@@ -21810,6 +21810,7 @@ impl TerminalView {
                     document_version: *document_version,
                 });
             }
+            InputEvent::PasteClipboardToCLIAgent => self.paste(false, ctx),
             InputEvent::SubmitCLIAgentInput { text } => {
                 self.submit_cli_agent_rich_input(text.clone(), ctx);
             }

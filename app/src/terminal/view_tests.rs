@@ -38,7 +38,7 @@ use crate::ai::llms::LLMId;
 use crate::cloud_object::model::persistence::CloudModel;
 use crate::cloud_object::{CloudObjectMetadata, CloudObjectPermissions};
 use crate::context_chips::prompt::Prompt;
-use crate::editor::{AutosuggestionLocation, AutosuggestionType, CrdtOperation};
+use crate::editor::{AutosuggestionLocation, AutosuggestionType, CrdtOperation, EditorAction};
 use crate::features::FeatureFlag;
 use crate::pane_group::focus_state::PaneGroupFocusState;
 use crate::pane_group::pane::PaneStack;
@@ -6007,6 +6007,88 @@ fn paste_raw_image_clipboard_in_windows_codex_routes_to_agent_when_input_is_visi
             });
 
             view.handle_action(&TerminalAction::Paste, ctx);
+        });
+
+        let writes = pty_writes.borrow();
+        assert_eq!(writes.len(), 1, "expected one PTY write, got {writes:?}");
+        assert_eq!(writes[0], vec![C0::ESC, b'v']);
+    })
+}
+
+#[test]
+fn paste_raw_image_clipboard_from_focused_input_in_windows_codex_routes_to_agent() {
+    if !cfg!(windows) {
+        return;
+    }
+
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
+
+        let terminal = add_window_with_terminal(&mut app, None);
+
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        terminal.update(&mut app, |view, ctx| {
+            CLIAgentSessionsModel::handle(ctx).update(ctx, |sessions, ctx| {
+                sessions.set_session(
+                    view.view_id,
+                    CLIAgentSession {
+                        agent: CLIAgent::Codex,
+                        status: CLIAgentSessionStatus::InProgress,
+                        session_context: CLIAgentSessionContext::default(),
+                        input_state: CLIAgentInputState::Closed,
+                        should_auto_toggle_input: false,
+                        listener: None,
+                        remote_host: None,
+                        plugin_version: None,
+                        draft_text: None,
+                        custom_command_prefix: None,
+                        received_rich_notification: false,
+                    },
+                    ctx,
+                );
+            });
+
+            {
+                let mut model = view.model.lock();
+                model.init_shell(InitShellValue {
+                    session_id: 0.into(),
+                    shell: "powershell".to_owned(),
+                    ..Default::default()
+                });
+                model.bootstrapped(BootstrappedValue {
+                    shell: "powershell".to_owned(),
+                    ..Default::default()
+                });
+                model.simulate_long_running_block(CLIAgent::Codex.command_prefix(), "");
+                model.set_mode(ansi::Mode::BracketedPaste);
+
+                assert!(model.block_list().is_bootstrapped());
+                assert!(view.is_input_box_visible(&model, ctx));
+            }
+
+            ctx.clipboard().write(ClipboardContent {
+                images: Some(vec![warpui::clipboard::ImageData {
+                    data: vec![0x89, 0x50, 0x4E, 0x47],
+                    mime_type: "image/png".to_string(),
+                    filename: None,
+                }]),
+                ..Default::default()
+            });
+
+            let editor = view.input.as_ref(ctx).editor().clone();
+            editor.update(ctx, |editor, ctx| {
+                editor.handle_action(&EditorAction::Paste, ctx);
+            });
         });
 
         let writes = pty_writes.borrow();

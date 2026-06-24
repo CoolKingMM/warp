@@ -1071,6 +1071,7 @@ pub enum Event {
         document_id: AIDocumentId,
         document_version: AIDocumentVersion,
     },
+    PasteClipboardToCLIAgent,
     SubmitCLIAgentInput {
         text: String,
     },
@@ -10930,6 +10931,11 @@ impl Input {
         // Read from app clipboard
         let content = ctx.clipboard().read();
 
+        if self.should_delegate_clipboard_paste_to_cli_agent(&content, ctx) {
+            ctx.emit(Event::PasteClipboardToCLIAgent);
+            return;
+        }
+
         // If AI is disabled, attachment isn't possible
         if cfg!(feature = "oss_slim") || !AISettings::as_ref(ctx).is_any_ai_enabled(ctx) {
             self.insert_clipboard_text_content(ctx, content);
@@ -10977,6 +10983,35 @@ impl Input {
         if should_insert_text && !already_inserted_text {
             self.insert_clipboard_text_content(ctx, content);
         }
+    }
+
+    fn should_delegate_clipboard_paste_to_cli_agent(
+        &self,
+        content: &ClipboardContent,
+        ctx: &AppContext,
+    ) -> bool {
+        if !cfg!(windows)
+            || CLIAgentSessionsModel::as_ref(ctx).is_input_open(self.terminal_view_id)
+        {
+            return false;
+        }
+
+        let Some(session) = CLIAgentSessionsModel::as_ref(ctx).session(self.terminal_view_id) else {
+            return false;
+        };
+        if !matches!(session.agent, CLIAgent::Claude | CLIAgent::Codex) {
+            return false;
+        }
+
+        if content.has_image_data()
+            || (content.plain_text.trim().is_empty() && content.num_paths() == 0)
+        {
+            return true;
+        }
+
+        let paths = content.paths.as_deref().unwrap_or(&[]);
+        let image_filepaths = warpui::clipboard_utils::get_image_filepaths_from_paths(paths);
+        !image_filepaths.is_empty() && image_filepaths.len() == content.num_paths()
     }
 
     /// Insert clipboard text content (paths / plaintext)

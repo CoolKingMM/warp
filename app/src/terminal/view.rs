@@ -8865,6 +8865,14 @@ impl TerminalView {
     /// Receiving the warpui::Event::KeyDown event from a child element.
     /// Generally, this should be control characters rather than printable characters.
     fn keydown_on_terminal(&mut self, characters: &str, ctx: &mut ViewContext<Self>) {
+        if cfg!(windows)
+            && characters == "\u{16}"
+            && self.has_active_cli_agent_session(ctx)
+        {
+            self.paste(false, ctx);
+            return;
+        }
+
         if self.is_long_running() {
             self.on_ssh_warpification_key_event(Some(SshKeyEvent::from_chars(characters)), ctx);
             self.highlighted_link.invalidate();
@@ -16577,6 +16585,9 @@ impl TerminalView {
 
         let is_cli_agent_paste =
             !should_paste_in_input && !middle_click && self.has_active_cli_agent_session(ctx);
+        let should_send_windows_alt_v = is_cli_agent_paste
+            && cfg!(windows)
+            && self.active_cli_agent_uses_windows_alt_v_for_image_paste(ctx);
 
         // If we're pasting into a CLI coding agent (e.g. Claude Code) that has its own native
         // handling for pasted file paths and images, skip shell-escaping and let the agent
@@ -16591,6 +16602,11 @@ impl TerminalView {
         } else {
             let clipboard_content = ctx.clipboard().read();
 
+            if should_send_windows_alt_v && clipboard_content.is_empty() {
+                self.write_user_bytes_to_pty(vec![escape_sequences::C0::ESC, b'v'], ctx);
+                return;
+            }
+
             if is_cli_agent_paste && clipboard_content.has_image_data() {
                 if !cfg!(windows) {
                     self.write_user_bytes_to_pty(vec![escape_sequences::C0::SYN], ctx);
@@ -16598,10 +16614,7 @@ impl TerminalView {
                 }
 
                 // On Windows, Claude Code and Codex use Alt+V for native image paste.
-                let should_send_alt_v = CLIAgentSessionsModel::as_ref(ctx)
-                    .session(self.view_id)
-                    .is_some_and(|s| matches!(s.agent, CLIAgent::Claude | CLIAgent::Codex));
-                if should_send_alt_v {
+                if should_send_windows_alt_v {
                     self.write_user_bytes_to_pty(vec![escape_sequences::C0::ESC, b'v'], ctx);
                     return;
                 }
@@ -16651,6 +16664,12 @@ impl TerminalView {
             }
             self.write_user_bytes_to_pty(copied.into_bytes(), ctx);
         }
+    }
+
+    fn active_cli_agent_uses_windows_alt_v_for_image_paste(&self, ctx: &AppContext) -> bool {
+        CLIAgentSessionsModel::as_ref(ctx)
+            .session(self.view_id)
+            .is_some_and(|s| matches!(s.agent, CLIAgent::Claude | CLIAgent::Codex))
     }
 
     fn has_active_cli_agent_session(&self, ctx: &AppContext) -> bool {

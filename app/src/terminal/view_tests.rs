@@ -5870,6 +5870,132 @@ fn paste_raw_image_clipboard_in_cli_agent_sends_correct_bytes() {
 }
 
 #[test]
+fn ctrl_v_keydown_in_windows_cli_agent_routes_through_paste() {
+    if !cfg!(windows) {
+        return;
+    }
+
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
+
+        let terminal = add_window_with_terminal(&mut app, None);
+
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        terminal.update(&mut app, |view, ctx| {
+            CLIAgentSessionsModel::handle(ctx).update(ctx, |sessions, ctx| {
+                sessions.set_session(
+                    view.view_id,
+                    CLIAgentSession {
+                        agent: CLIAgent::Codex,
+                        status: CLIAgentSessionStatus::InProgress,
+                        session_context: CLIAgentSessionContext::default(),
+                        input_state: CLIAgentInputState::Closed,
+                        should_auto_toggle_input: false,
+                        listener: None,
+                        remote_host: None,
+                        plugin_version: None,
+                        draft_text: None,
+                        custom_command_prefix: None,
+                        received_rich_notification: false,
+                    },
+                    ctx,
+                );
+            });
+
+            {
+                let mut model = view.model.lock();
+                model.simulate_long_running_block(CLIAgent::Codex.command_prefix(), "");
+                model.set_mode(ansi::Mode::BracketedPaste);
+            }
+
+            ctx.clipboard().write(ClipboardContent {
+                images: Some(vec![warpui::clipboard::ImageData {
+                    data: vec![0x89, 0x50, 0x4E, 0x47],
+                    mime_type: "image/png".to_string(),
+                    filename: None,
+                }]),
+                ..Default::default()
+            });
+
+            view.handle_action(&TerminalAction::KeyDown("\u{16}".to_string()), ctx);
+        });
+
+        let writes = pty_writes.borrow();
+        assert_eq!(writes.len(), 1, "expected one PTY write, got {writes:?}");
+        assert_eq!(writes[0], vec![C0::ESC, b'v']);
+    })
+}
+
+#[test]
+fn paste_empty_clipboard_in_windows_codex_sends_alt_v_fallback() {
+    if !cfg!(windows) {
+        return;
+    }
+
+    App::test((), |mut app| async move {
+        initialize_app_for_terminal_view(&mut app);
+        let _agent_view = FeatureFlag::AgentView.override_enabled(true);
+
+        let terminal = add_window_with_terminal(&mut app, None);
+
+        let pty_writes: Rc<RefCell<Vec<Vec<u8>>>> = Rc::new(RefCell::new(Vec::new()));
+        let writes = pty_writes.clone();
+        app.update(|ctx| {
+            ctx.subscribe_to_view(&terminal, move |_, event, _| {
+                if let Event::WriteBytesToPty { bytes } = event {
+                    writes.borrow_mut().push(bytes.to_vec());
+                }
+            });
+        });
+
+        terminal.update(&mut app, |view, ctx| {
+            CLIAgentSessionsModel::handle(ctx).update(ctx, |sessions, ctx| {
+                sessions.set_session(
+                    view.view_id,
+                    CLIAgentSession {
+                        agent: CLIAgent::Codex,
+                        status: CLIAgentSessionStatus::InProgress,
+                        session_context: CLIAgentSessionContext::default(),
+                        input_state: CLIAgentInputState::Closed,
+                        should_auto_toggle_input: false,
+                        listener: None,
+                        remote_host: None,
+                        plugin_version: None,
+                        draft_text: None,
+                        custom_command_prefix: None,
+                        received_rich_notification: false,
+                    },
+                    ctx,
+                );
+            });
+
+            {
+                let mut model = view.model.lock();
+                model.simulate_long_running_block(CLIAgent::Codex.command_prefix(), "");
+                model.set_mode(ansi::Mode::BracketedPaste);
+            }
+
+            ctx.clipboard().write(ClipboardContent::default());
+            view.handle_action(&TerminalAction::Paste, ctx);
+        });
+
+        let writes = pty_writes.borrow();
+        assert_eq!(writes.len(), 1, "expected one PTY write, got {writes:?}");
+        assert_eq!(writes[0], vec![C0::ESC, b'v']);
+    })
+}
+
+#[test]
 fn paste_image_file_clipboard_in_codex_and_claude_pastes_via_clipboard() {
     fn run_for_agent(agent: CLIAgent) {
         App::test((), move |mut app| async move {

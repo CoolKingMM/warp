@@ -394,7 +394,16 @@ impl<P: BackingView> View for PaneView<P> {
         column.add_child(Shrinkable::new(1., ChildView::new(&active_child).finish()).finish());
 
         let mut container = Container::new(column.finish());
-        if pane_configuration.show_accent_border {
+        if self.pane_id.is_terminal_pane() {
+            let width = if pane_configuration.show_accent_border {
+                2.
+            } else {
+                1.
+            };
+            let border = Border::all(width)
+                .with_border_color(appearance.theme().terminal_colors().normal.yellow.into());
+            container = container.with_border(border);
+        } else if pane_configuration.show_accent_border {
             let border = Border::all(2.).with_border_fill(appearance.theme().accent());
             container = container.with_border(border);
         }

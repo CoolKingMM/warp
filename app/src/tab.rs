@@ -1599,11 +1599,10 @@ impl<'a> TabComponent<'a> {
                 )
                 .finish(),
             );
-            let right_padding = if self.project_pin_path.is_some() {
-                (TAB_CLOSE_BUTTON_WIDTH * 2.) + 12.
-            } else {
-                8.
-            };
+            if let Some(pin_button) = self.render_project_pin_button() {
+                flex_row.add_child(Container::new(pin_button).with_margin_left(4.).finish());
+            }
+            let right_padding = TAB_CLOSE_BUTTON_WIDTH + 8.;
             let mut container = Container::new(flex_row.finish())
                 .with_padding_left(8.)
                 .with_padding_right(right_padding);
@@ -1715,23 +1714,6 @@ impl<'a> TabComponent<'a> {
         };
 
         let mut full_stack = Stack::new().with_child(full_tab_content);
-        if let Some(pin_button) = self.render_project_pin_button() {
-            let pin_horizontal_inset = match parent_anchor {
-                ParentAnchor::MiddleLeft | ParentAnchor::TopLeft => {
-                    horizontal_inset + TAB_CLOSE_BUTTON_WIDTH + 4.
-                }
-                _ => horizontal_inset - TAB_CLOSE_BUTTON_WIDTH - 4.,
-            };
-            full_stack.add_positioned_overlay_child(
-                pin_button,
-                OffsetPositioning::offset_from_parent(
-                    vec2f(pin_horizontal_inset, 0.0),
-                    ParentOffsetBounds::ParentByPosition,
-                    parent_anchor,
-                    child_anchor,
-                ),
-            );
-        }
         full_stack.add_positioned_child(
             build_close_button_overlay(is_hovered),
             OffsetPositioning::offset_from_parent(
@@ -1861,7 +1843,8 @@ impl UiComponent for TabComponent<'_> {
         let mut tab = Hoverable::new(tab_mouse_state, move |state| {
             let is_hovered = state.is_hovered() || self.is_drag_target;
             self.render_tab_container(is_hovered)
-        });
+        })
+        .with_defer_events_to_children();
 
         // Add tooltip hover on top with delay if we have a tooltip message
         if let Some(tooltip_text) = tooltip_text {

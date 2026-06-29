@@ -1331,7 +1331,7 @@ impl<'a> TabComponent<'a> {
     }
 
     fn render_project_pin_button(&self) -> Option<Box<dyn Element>> {
-        let project_path = self.project_pin_path.clone()?;
+        self.project_pin_path.as_ref()?;
         let pin_mouse_state = self.tab.project_pin_mouse_state.clone();
         let icon = if self.project_is_pinned {
             Icon::PinFilled
@@ -1365,18 +1365,17 @@ impl<'a> TabComponent<'a> {
             })
             .with_tooltip(move || ui_builder.tool_tip(tooltip_label).build().finish())
             .build()
-            .on_click(move |ctx, _, _| {
-                ctx.dispatch_typed_action(WorkspaceAction::ToggleProjectPin {
-                    path: project_path.clone(),
-                })
-            })
             .finish();
 
         Some(
-            ConstrainedBox::new(button)
-                .with_width(TAB_CLOSE_BUTTON_WIDTH)
-                .with_height(TAB_CLOSE_BUTTON_WIDTH)
-                .finish(),
+            SavePosition::new(
+                ConstrainedBox::new(button)
+                    .with_width(TAB_CLOSE_BUTTON_WIDTH)
+                    .with_height(TAB_CLOSE_BUTTON_WIDTH)
+                    .finish(),
+                &format!("project_pin_button:{}", self.tab_index),
+            )
+            .finish(),
         )
     }
 
@@ -1831,6 +1830,8 @@ impl UiComponent for TabComponent<'_> {
         let sole_grouped_member = self.sole_grouped_member;
         let locator = self.locator;
         let is_in_multi_tab_selection = self.is_in_multi_tab_selection;
+        let project_pin_path = self.project_pin_path.clone();
+        let project_pin_button_position_id = format!("project_pin_button:{tab_index}");
 
         // Extract values before moving self into closure
         let tooltip_text = self.tooltip_message.clone();
@@ -1975,7 +1976,18 @@ impl UiComponent for TabComponent<'_> {
             // Modifier-aware mouse-down: shift extends the selection range,
             // cmd toggles a tab in/out of the selection, plain press
             // activates.
-            tab = tab.on_mouse_down_with_modifiers(move |ctx, _, _, modifiers| {
+            tab = tab.on_mouse_down_with_modifiers(move |ctx, _, position, modifiers| {
+                if let Some(project_path) = project_pin_path.as_ref() {
+                    if let Some(rect) = ctx.element_position_by_id(&project_pin_button_position_id)
+                    {
+                        if rect.contains_point(position) {
+                            ctx.dispatch_typed_action(WorkspaceAction::ToggleProjectPin {
+                                path: project_path.clone(),
+                            });
+                            return;
+                        }
+                    }
+                }
                 let close_hovered = mouse_close_state
                     .lock()
                     .expect("lock acquired")

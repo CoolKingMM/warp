@@ -1330,42 +1330,53 @@ impl<'a> TabComponent<'a> {
         .finish()
     }
 
-    fn render_project_pin_button(&self) -> Option<Box<dyn Element>> {
+    fn render_project_pin_button(&self, is_hovered: bool) -> Option<Box<dyn Element>> {
         self.project_pin_path.as_ref()?;
         let pin_mouse_state = self.tab.project_pin_mouse_state.clone();
-        let icon = if self.project_is_pinned {
-            Icon::PinFilled
-        } else {
-            Icon::Pin
-        };
-        let icon_color = if self.project_is_pinned {
-            self.appearance.theme().main_text_color(self.appearance.theme().background())
-        } else {
-            self.appearance.theme().sub_text_color(self.appearance.theme().background())
-        };
-        let tooltip_label = if self.project_is_pinned {
-            "Unpin project"
-        } else {
-            "Pin project"
-        }
-        .to_string();
-        let ui_builder = self.ui_builder.clone();
+        let button = if is_hovered {
+            let icon = if self.project_is_pinned {
+                Icon::PinFilled
+            } else {
+                Icon::Pin
+            };
+            let icon_color = if self.project_is_pinned {
+                self.appearance
+                    .theme()
+                    .main_text_color(self.appearance.theme().background())
+            } else {
+                self.appearance
+                    .theme()
+                    .sub_text_color(self.appearance.theme().background())
+            };
+            let tooltip_label = if self.project_is_pinned {
+                "Unpin project"
+            } else {
+                "Pin project"
+            }
+            .to_string();
+            let ui_builder = self.ui_builder.clone();
 
-        let button = icon_button(self.appearance, icon, self.project_is_pinned, pin_mouse_state)
-            .with_style(UiComponentStyles {
-                font_color: Some(icon_color.into()),
-                background: Some(Fill::None),
-                border_radius: Some(CornerRadius::with_all(Radius::Pixels(2.0))),
-                ..UiComponentStyles::default()
-            })
-            .with_hovered_styles(UiComponentStyles {
-                font_color: Some(icon_color.into()),
-                background: Some(self.appearance.theme().surface_2().into()),
-                ..UiComponentStyles::default()
-            })
-            .with_tooltip(move || ui_builder.tool_tip(tooltip_label).build().finish())
-            .build()
-            .finish();
+            icon_button(self.appearance, icon, self.project_is_pinned, pin_mouse_state)
+                .with_style(UiComponentStyles {
+                    font_color: Some(icon_color.into()),
+                    background: Some(Fill::None),
+                    border_radius: Some(CornerRadius::with_all(Radius::Pixels(2.0))),
+                    ..UiComponentStyles::default()
+                })
+                .with_hovered_styles(UiComponentStyles {
+                    font_color: Some(icon_color.into()),
+                    background: Some(self.appearance.theme().surface_2().into()),
+                    ..UiComponentStyles::default()
+                })
+                .with_tooltip(move || ui_builder.tool_tip(tooltip_label).build().finish())
+                .build()
+                .finish()
+        } else {
+            ConstrainedBox::new(Empty::new().finish())
+                .with_width(ICON_DIMENSIONS)
+                .with_height(ICON_DIMENSIONS)
+                .finish()
+        };
 
         Some(
             SavePosition::new(
@@ -1598,7 +1609,7 @@ impl<'a> TabComponent<'a> {
                 )
                 .finish(),
             );
-            if let Some(pin_button) = self.render_project_pin_button() {
+            if let Some(pin_button) = self.render_project_pin_button(is_hovered) {
                 flex_row.add_child(Container::new(pin_button).with_margin_left(4.).finish());
             }
             let right_padding = TAB_CLOSE_BUTTON_WIDTH + 8.;

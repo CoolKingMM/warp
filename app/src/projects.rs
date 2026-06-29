@@ -65,12 +65,86 @@ impl ProjectManagementModel {
                 path: path.to_string_lossy().to_string(),
                 added_ts: now,
                 last_opened_ts: Some(now),
+                pinned: false,
+                pinned_ts: None,
             };
             self.projects.insert(path.clone(), project.clone());
             project
         };
         self.save_project(project);
         ctx.emit(ProjectEvent::Added { path });
+    }
+
+    pub fn is_project_pinned(&self, path: &PathBuf) -> bool {
+        self.projects
+            .get(path)
+            .is_some_and(|project| project.pinned)
+    }
+
+    pub fn set_project_pinned(
+        &mut self,
+        path: PathBuf,
+        pinned: bool,
+        ctx: &mut ModelContext<Self>,
+    ) {
+        let now = Utc::now().naive_utc();
+
+        let project = if let Some(existing_project) = self.projects.get_mut(&path) {
+            existing_project.pinned = pinned;
+            existing_project.pinned_ts = pinned.then_some(now);
+            existing_project.clone()
+        } else {
+            let project = Project {
+                path: path.to_string_lossy().to_string(),
+                added_ts: now,
+                last_opened_ts: Some(now),
+                pinned,
+                pinned_ts: pinned.then_some(now),
+            };
+            self.projects.insert(path.clone(), project.clone());
+            project
+        };
+
+        self.save_project(project);
+        ctx.emit(ProjectEvent::Updated { path });
+    }
+
+    pub fn toggle_project_pinned(&mut self, path: PathBuf, ctx: &mut ModelContext<Self>) {
+        let pinned = !self.is_project_pinned(&path);
+        self.set_project_pinned(path, pinned, ctx);
+    }
+
+    pub fn startup_project_paths(&self) -> Vec<PathBuf> {
+        let mut pinned_projects = self
+            .projects
+            .values()
+            .filter(|project| project.pinned)
+            .collect::<Vec<_>>();
+        pinned_projects
+            .sort_by_key(|project| project.pinned_ts.unwrap_or_else(|| project.last_used_at()));
+
+        let mut paths = pinned_projects
+            .into_iter()
+            .map(|project| PathBuf::from(&project.path))
+            .filter(|path| path.is_dir())
+            .collect::<Vec<_>>();
+
+        let latest_unpinned = self
+            .projects
+            .values()
+            .filter(|project| !project.pinned)
+            .map(|project| (project.last_used_at(), PathBuf::from(&project.path)))
+            .filter(|(_, path)| path.is_dir())
+            .max_by_key(|(last_used_at, _)| *last_used_at)
+            .map(|(_, path)| path);
+
+        if let Some(path) = latest_unpinned {
+            if !paths.contains(&path) {
+                paths.push(path);
+            }
+        }
+
+        paths
     }
 
     pub fn all_projects(&self) -> impl Iterator<Item = &Project> {
@@ -87,3 +161,7 @@ impl ProjectManagementModel {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "projects_tests.rs"]
+mod tests;

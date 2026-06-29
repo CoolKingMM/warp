@@ -174,15 +174,7 @@ impl WelcomeView {
         let path_buf = PathBuf::from(path);
         // todo(jparker): What happens if the user deletes a project folder between when this list was generated and now?
         update_workspace(ctx.window_id(), ctx, |workspace, ctx| {
-            // Create a new terminal tab with the project path as the initial directory
-            workspace.add_tab_with_pane_layout(
-                PanesLayout::SingleTerminal(Box::new(
-                    NewTerminalOptions::default().with_initial_directory(&path_buf),
-                )),
-                Arc::new(HashMap::new()),
-                None,
-                ctx,
-            );
+            workspace.add_project_tab(path_buf.clone(), ctx);
 
             // Start AI mode in the new terminal
             workspace
@@ -321,16 +313,7 @@ fn save_and_open_project(path: String, window_id: WindowId, ctx: &mut AppContext
         let path_buf = PathBuf::from(&path);
         projects.upsert_project(path_buf.clone(), ctx);
         update_workspace(window_id, ctx, move |workspace, ctx| {
-            workspace.add_tab_with_pane_layout(
-                PanesLayout::SingleTerminal(Box::new(
-                    NewTerminalOptions::default()
-                        .with_initial_directory(path)
-                        .with_homepage_hidden(),
-                )),
-                Arc::new(HashMap::new()),
-                None,
-                ctx,
-            );
+            workspace.add_project_tab(PathBuf::from(path), ctx);
             workspace.active_tab_pane_group().update(ctx, |tab, ctx| {
                 if let Some(active_terminal) = tab.active_session_view(ctx) {
                     active_terminal.update(ctx, |terminal, _ctx| {

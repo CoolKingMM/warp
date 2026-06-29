@@ -991,6 +991,10 @@ fn save_app_state(conn: &mut SqliteConnection, app_state: &AppState) -> Result<(
                                 .collect::<Vec<_>>();
                             serde_json::to_string(&root_bytes).ok()
                         }),
+                    project_path: tab
+                        .project_path
+                        .as_ref()
+                        .map(|path| path.to_string_lossy().to_string()),
                 })
                 .collect();
 
@@ -2540,6 +2544,7 @@ fn read_sqlite_data(
                             left_panel,
                             right_panel,
                             group_id,
+                            project_path: tab.project_path.map(PathBuf::from),
                         })
                     })
                     .collect();

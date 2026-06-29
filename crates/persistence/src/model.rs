@@ -225,6 +225,8 @@ pub struct Project {
     pub path: String,
     pub added_ts: NaiveDateTime,
     pub last_opened_ts: Option<NaiveDateTime>,
+    pub pinned: bool,
+    pub pinned_ts: Option<NaiveDateTime>,
 }
 
 impl Project {
@@ -351,6 +353,7 @@ pub struct Tab {
     pub color: Option<String>,
     pub tab_group_id: Option<i32>,
     pub project_terminal_root_pane_uuids: Option<String>,
+    pub project_path: Option<String>,
 }
 
 #[derive(Insertable)]
@@ -361,6 +364,7 @@ pub struct NewTab {
     pub color: Option<String>,
     pub tab_group_id: Option<i32>,
     pub project_terminal_root_pane_uuids: Option<String>,
+    pub project_path: Option<String>,
 }
 
 /// Persisted form of a tab group. `name` is optional — untitled groups omit

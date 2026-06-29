@@ -337,6 +337,8 @@ diesel::table! {
         path -> Text,
         added_ts -> Timestamp,
         last_opened_ts -> Nullable<Timestamp>,
+        pinned -> Bool,
+        pinned_ts -> Nullable<Timestamp>,
     }
 }
 
@@ -372,6 +374,7 @@ diesel::table! {
         color -> Nullable<Text>,
         tab_group_id -> Nullable<Integer>,
         project_terminal_root_pane_uuids -> Nullable<Text>,
+        project_path -> Nullable<Text>,
     }
 }
 

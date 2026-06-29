@@ -644,6 +644,9 @@ pub enum WorkspaceAction {
     OpenRepository {
         path: Option<String>,
     },
+    ToggleProjectPin {
+        path: PathBuf,
+    },
     /// Open the native folder picker for a repo param in the tab-config modal after the
     /// current interaction cycle finishes.
     OpenTabConfigRepoPicker {
@@ -903,6 +906,7 @@ impl WorkspaceAction {
             | ForkAIConversation { .. }
             | SummarizeAIConversation { .. }
             | OpenRepository { .. }
+            | ToggleProjectPin { .. }
             | SelectTabConfig(_)
             | ToggleVerticalTabsPanel => true, // actions that actually change a state of the state of user's
             // workspace would most likely require a save, so that if the app gets

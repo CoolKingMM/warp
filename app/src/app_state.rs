@@ -84,6 +84,8 @@ pub struct TabSnapshot {
     pub right_panel: Option<RightPanelSnapshot>,
     /// Tab group this tab belongs to, if any.
     pub group_id: Option<TabGroupId>,
+    /// Project path represented by this tab, if the tab was opened as a project.
+    pub project_path: Option<PathBuf>,
 }
 
 impl TabSnapshot {

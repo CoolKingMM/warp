@@ -938,6 +938,7 @@ pub struct TransferredTab {
     pub right_panel_open: bool,
     pub is_right_panel_maximized: bool,
     pub draggable_state: DraggableState,
+    pub project_path: Option<PathBuf>,
 }
 
 /// Per-`TabGroupId` hover state for the horizontal tab bar header.
@@ -3817,6 +3818,7 @@ impl Workspace {
                         self.tabs[tab_index].group_id = saved_tab
                             .group_id
                             .filter(|group_id| self.tab_groups.contains_key(group_id));
+                        self.tabs[tab_index].project_path = saved_tab.project_path.clone();
 
                         let pane_group = self.tabs[tab_index].pane_group.clone();
 
@@ -3833,26 +3835,37 @@ impl Workspace {
                         }
                     });
 
-                if self.tab_count() == 0 {
-                    if self.should_trigger_get_started_onboarding(ctx) {
+                let restored_tab_count = self.tab_count();
+                if restored_tab_count == 0 {
+                    if self.open_startup_project_tabs(ctx) {
+                        // Startup project tabs already activate the latest startup project.
+                    } else if self.should_trigger_get_started_onboarding(ctx) {
                         self.trigger_get_started_onboarding(ctx);
                         return;
                     }
                     // If we still haven't created any tabs after attempting to restore, create a new tab
                     // with sensible defaults.
-                    self.add_new_session_tab_with_default_mode(
-                        NewSessionSource::Window,
-                        None,  /* previous_active_window */
-                        None,  /* chosen_shell */
-                        None,  /* ai_conversation */
-                        false, /* hide_homepage */
-                        ctx,
-                    );
+                    if self.tab_count() == 0 {
+                        self.add_new_session_tab_with_default_mode(
+                            NewSessionSource::Window,
+                            None,  /* previous_active_window */
+                            None,  /* chosen_shell */
+                            None,  /* ai_conversation */
+                            false, /* hide_homepage */
+                            ctx,
+                        );
+                    }
                 } else if self.left_panel_visibility_across_tabs_enabled(ctx) {
                     self.left_panel_open = restored_left_panel_open;
                 }
 
-                self.activate_tab_internal(active_tab_index, ctx);
+                if restored_tab_count > 0 {
+                    self.open_startup_project_tabs(ctx);
+                    self.activate_tab_internal(
+                        active_tab_index.min(restored_tab_count.saturating_sub(1)),
+                        ctx,
+                    );
+                }
                 self.check_and_trigger_onboarding(ctx);
             }
             NewWorkspaceSource::FromTemplate { window_template } => {
@@ -4096,6 +4109,11 @@ impl Workspace {
         shell: Option<AvailableShell>,
         ctx: &mut ViewContext<Self>,
     ) {
+        if self.open_startup_project_tabs(ctx) {
+            self.check_and_trigger_onboarding(ctx);
+            return;
+        }
+
         let show_warp_home = !ContextFlag::CreateNewSession.is_enabled();
         let mut placeholder_pane = None;
         let open_warp_drive = if !show_warp_home {
@@ -11137,6 +11155,7 @@ impl Workspace {
                     } else {
                         None
                     },
+                    project_path: self.tabs.get(tab_index).and_then(|tab| tab.project_path.clone()),
                 }
             })
             .filter(|tab| {
@@ -11420,6 +11439,64 @@ impl Workspace {
             let target_index = self.tabs.len() - 1;
             self.activate_tab(target_index, ctx);
         }
+    }
+
+    pub(crate) fn add_project_tab(
+        &mut self,
+        project_path: PathBuf,
+        ctx: &mut ViewContext<Self>,
+    ) -> usize {
+        self.add_tab_with_pane_layout(
+            PanesLayout::SingleTerminal(Box::new(NewTerminalOptions {
+                initial_directory: Some(project_path.clone()),
+                hide_homepage: true,
+                ..Default::default()
+            })),
+            Arc::new(HashMap::new()),
+            None,
+            ctx,
+        );
+        let tab_index = self.active_tab_index;
+        if let Some(tab) = self.tabs.get_mut(tab_index) {
+            tab.project_path = Some(project_path);
+        }
+        tab_index
+    }
+
+    fn open_startup_project_tabs(&mut self, ctx: &mut ViewContext<Self>) -> bool {
+        let startup_project_paths = ProjectManagementModel::handle(ctx)
+            .read(ctx, |projects, _| projects.startup_project_paths());
+        if startup_project_paths.is_empty() {
+            return false;
+        }
+
+        let mut opened_project_paths = self
+            .tabs
+            .iter()
+            .filter_map(|tab| tab.project_path.clone())
+            .collect::<HashSet<_>>();
+
+        let mut last_project_tab_index = None;
+        for project_path in startup_project_paths {
+            let tab_index = self
+                .tabs
+                .iter()
+                .position(|tab| tab.project_path.as_ref() == Some(&project_path))
+                .or_else(|| {
+                    if opened_project_paths.insert(project_path.clone()) {
+                        Some(self.add_project_tab(project_path, ctx))
+                    } else {
+                        None
+                    }
+                });
+            last_project_tab_index = tab_index.or(last_project_tab_index);
+        }
+
+        if let Some(tab_index) = last_project_tab_index {
+            self.activate_tab_internal(tab_index, ctx);
+        }
+
+        true
     }
 
     pub fn activate_most_recent_tab(&mut self, ctx: &mut ViewContext<Self>) {
@@ -12589,16 +12666,7 @@ impl Workspace {
         ProjectManagementModel::handle(ctx).update(ctx, |projects, ctx| {
             projects.upsert_project(path_buf.clone(), ctx);
         });
-        self.add_tab_with_pane_layout(
-            PanesLayout::SingleTerminal(Box::new(NewTerminalOptions {
-                initial_directory: Some(path_buf.clone()),
-                hide_homepage: true,
-                ..Default::default()
-            })),
-            Arc::new(HashMap::new()),
-            None,
-            ctx,
-        );
+        self.add_project_tab(path_buf.clone(), ctx);
         self.active_tab_pane_group().update(ctx, |tab, ctx| {
             if let Some(active_terminal) = tab.active_session_view(ctx) {
                 active_terminal.update(ctx, |terminal, _| {
@@ -24691,6 +24759,12 @@ impl TypedActionView for Workspace {
             OpenRepository { path } => {
                 self.open_repository(path.as_deref(), ctx);
             }
+            ToggleProjectPin { path } => {
+                ProjectManagementModel::handle(ctx).update(ctx, |projects, ctx| {
+                    projects.toggle_project_pinned(path.clone(), ctx);
+                });
+                ctx.notify();
+            }
             OpenTabConfigRepoPicker { param_index } => {
                 self.open_repo_picker_for_tab_config_modal(*param_index, ctx);
             }
@@ -26825,6 +26899,7 @@ impl Workspace {
         let pane_group = tab.pane_group.clone();
         let color = tab.color();
         let draggable_state = tab.draggable_state.clone();
+        let project_path = tab.project_path.clone();
         let custom_title = pane_group.read(ctx, |pg, ctx| pg.custom_title(ctx));
         let left_panel_open = pane_group.read(ctx, |pg, _| pg.left_panel_open);
         let right_panel_open = pane_group.read(ctx, |pg, _| pg.right_panel_open);
@@ -26839,6 +26914,7 @@ impl Workspace {
             right_panel_open,
             is_right_panel_maximized,
             draggable_state,
+            project_path,
             vertical_tabs_panel_open,
         })
     }
@@ -26891,6 +26967,7 @@ impl Workspace {
             pane_group,
             color,
             draggable_state,
+            project_path,
             ..
         } = transferred_tab;
         ctx.subscribe_to_view(&pane_group, move |me, pane_group, event, ctx| {
@@ -26901,6 +26978,7 @@ impl Workspace {
         let mut tab_data = TabData::new(pane_group);
         tab_data.selected_color = color.map_or(SelectedTabColor::Unset, SelectedTabColor::Color);
         tab_data.draggable_state = draggable_state;
+        tab_data.project_path = project_path;
         self.tabs.insert(index, tab_data);
         self.activate_tab_internal(index, ctx);
         ctx.notify();

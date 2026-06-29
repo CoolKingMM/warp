@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -34,6 +35,7 @@ use crate::features::FeatureFlag;
 use crate::launch_configs::launch_config::LaunchConfig;
 use crate::menu::{MenuAction, MenuItem, MenuItemFields};
 use crate::pane_group::{PaneGroup, PaneId};
+use crate::projects::ProjectManagementModel;
 use crate::shell_indicator::ShellIndicatorType;
 use crate::terminal::shared_session::render_util::shared_session_indicator_color;
 use crate::terminal::view::TerminalViewState;
@@ -161,6 +163,9 @@ pub struct TabData {
     pub in_multi_selection: bool,
     /// True when this tab is pinned to the front of the tab list.
     pub pinned: bool,
+    /// Project path represented by this tab, if it was opened as a project.
+    pub project_path: Option<PathBuf>,
+    pub project_pin_mouse_state: MouseStateHandle,
 }
 
 const TAB_COLOR_ICON_PATH: &str = "bundled/svg/ellipse.svg";
@@ -181,6 +186,8 @@ impl TabData {
             group_id: None,
             in_multi_selection: false,
             pinned: false,
+            project_path: None,
+            project_pin_mouse_state: Default::default(),
         }
     }
 
@@ -784,6 +791,7 @@ pub struct TabComponent<'a> {
     /// both the in-selection highlight and the right-click menu dispatch
     /// (multi-tab menu vs single-tab menu).
     is_in_multi_tab_selection: bool,
+    project_is_pinned: bool,
 }
 
 /// Structure that holds TabComponent styles.
@@ -950,6 +958,11 @@ impl<'a> TabComponent<'a> {
             pane_group_id,
             pane_id,
         };
+        let project_is_pinned = tab.project_path.as_ref().is_some_and(|path| {
+            ProjectManagementModel::handle(ctx).read(ctx, |projects, _| {
+                projects.is_project_pinned(path)
+            })
+        });
         Self {
             tab: tab.clone(),
             tab_bar,
@@ -972,6 +985,7 @@ impl<'a> TabComponent<'a> {
             sole_grouped_member: false,
             locator,
             is_in_multi_tab_selection: false,
+            project_is_pinned,
         }
     }
 
@@ -1304,6 +1318,58 @@ impl<'a> TabComponent<'a> {
         .finish()
     }
 
+    fn render_project_pin_button(&self) -> Option<Box<dyn Element>> {
+        let project_path = self.tab.project_path.clone()?;
+        let pin_mouse_state = self.tab.project_pin_mouse_state.clone();
+        let icon = if self.project_is_pinned {
+            Icon::PinFilled
+        } else {
+            Icon::Pin
+        };
+        let icon_color = if self.project_is_pinned {
+            self.appearance.theme().main_text_color(self.appearance.theme().background())
+        } else {
+            self.appearance.theme().sub_text_color(self.appearance.theme().background())
+        };
+        let tooltip_label = if self.project_is_pinned {
+            "Unpin project"
+        } else {
+            "Pin project"
+        }
+        .to_string();
+        let ui_builder = self.ui_builder.clone();
+
+        let button = icon_button(self.appearance, icon, self.project_is_pinned, pin_mouse_state)
+            .with_style(UiComponentStyles {
+                font_color: Some(icon_color.into()),
+                background: Some(Fill::None),
+                border_radius: Some(CornerRadius::with_all(Radius::Pixels(2.0))),
+                ..UiComponentStyles::default()
+            })
+            .with_hovered_styles(UiComponentStyles {
+                font_color: Some(icon_color.into()),
+                background: Some(self.appearance.theme().surface_2().into()),
+                ..UiComponentStyles::default()
+            })
+            .with_tooltip(move || ui_builder.tool_tip(tooltip_label).build().finish())
+            .build()
+            .on_click(move |ctx, _, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::ToggleProjectPin { path: project_path })
+            })
+            .finish();
+
+        Some(
+            Container::new(
+                ConstrainedBox::new(button)
+                    .with_width(TAB_CLOSE_BUTTON_WIDTH)
+                    .with_height(TAB_CLOSE_BUTTON_WIDTH)
+                    .finish(),
+            )
+            .with_margin_left(4.)
+            .finish(),
+        )
+    }
+
     fn render_indicator(&self) -> Option<Box<dyn Element>> {
         let icon = match &self.indicator {
             Indicator::UnsavedChanges => Some(
@@ -1523,7 +1589,17 @@ impl<'a> TabComponent<'a> {
                 )
                 .finish(),
             );
-            let mut container = Container::new(flex_row.finish()).with_horizontal_padding(8.);
+            if let Some(pin_button) = self.render_project_pin_button() {
+                flex_row.add_child(pin_button);
+            }
+            let right_padding = if self.tab.project_path.is_some() {
+                TAB_CLOSE_BUTTON_WIDTH + 8.
+            } else {
+                8.
+            };
+            let mut container = Container::new(flex_row.finish())
+                .with_padding_left(8.)
+                .with_padding_right(right_padding);
             // Pad inside the Stack so the close-button overlay (anchored to
             // the Stack) stays vertically centered within the visible pill.
             if self.grouped_member {
@@ -1743,6 +1819,7 @@ impl UiComponent for TabComponent<'_> {
         let is_any_tab_dragging = self.tab_bar.is_any_tab_dragging;
         let draggable_state = self.tab.draggable_state.clone();
         let mouse_close_state = self.tab.close_mouse_state.clone();
+        let mouse_pin_state = self.tab.project_pin_mouse_state.clone();
         // Capture before `self` is moved into the Hoverable closure below.
         let for_drag_ghost = self.for_drag_ghost;
         let sole_grouped_member = self.sole_grouped_member;
@@ -1897,6 +1974,13 @@ impl UiComponent for TabComponent<'_> {
                     .expect("lock acquired")
                     .is_hovered();
                 if close_hovered {
+                    return;
+                }
+                let pin_hovered = mouse_pin_state
+                    .lock()
+                    .expect("lock acquired")
+                    .is_hovered();
+                if pin_hovered {
                     return;
                 }
                 if modifiers.shift && FeatureFlag::GroupedTabs.is_enabled() {

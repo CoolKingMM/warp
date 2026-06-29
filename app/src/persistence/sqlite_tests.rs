@@ -284,6 +284,7 @@ fn test_terminal_window_snapshot(vertical_tabs_panel_open: bool) -> WindowSnapsh
             left_panel: None,
             right_panel: None,
             group_id: None,
+            project_path: None,
         }],
         active_tab_index: 0,
         bounds: None,
@@ -370,6 +371,7 @@ fn test_sqlite_round_trips_custom_vertical_tabs_title() {
                 left_panel: None,
                 right_panel: None,
                 group_id: None,
+                project_path: None,
             }],
             active_tab_index: 0,
             bounds: None,
@@ -439,6 +441,34 @@ fn test_sqlite_round_trips_project_terminal_root_pane_uuids() {
 }
 
 #[test]
+fn test_sqlite_round_trips_project_path() {
+    let tempdir = tempfile::tempdir().expect("tempdir should be created");
+    let database_path = tempdir.path().join("warp.sqlite");
+    let mut conn = setup_database(&database_path).expect("database should initialize");
+
+    let expected_project_path = tempdir.path().join("project");
+    let mut window = test_terminal_window_snapshot(false);
+    window.tabs[0].project_path = Some(expected_project_path.clone());
+    let app_state = AppState {
+        windows: vec![window],
+        active_window_index: Some(0),
+        block_lists: Default::default(),
+        running_mcp_servers: Default::default(),
+    };
+
+    save_app_state(&mut conn, &app_state).expect("app state should save");
+
+    let restored = read_sqlite_data(&mut conn, None)
+        .expect("app state should load")
+        .app_state;
+
+    assert_eq!(
+        restored.windows[0].tabs[0].project_path,
+        Some(expected_project_path)
+    );
+}
+
+#[test]
 fn test_sqlite_round_trips_code_pane_with_multiple_tabs() {
     let tempdir = tempfile::tempdir().expect("tempdir should be created");
     let database_path = tempdir.path().join("warp.sqlite");
@@ -475,6 +505,7 @@ fn test_sqlite_round_trips_code_pane_with_multiple_tabs() {
                 left_panel: None,
                 right_panel: None,
                 group_id: None,
+                project_path: None,
             }],
             active_tab_index: 0,
             bounds: None,
@@ -560,6 +591,7 @@ fn test_sqlite_round_trips_tab_groups() {
         left_panel: None,
         right_panel: None,
         group_id: Some(group_id),
+        project_path: None,
     };
     let tab_outside_group = TabSnapshot {
         custom_title: None,
@@ -588,6 +620,7 @@ fn test_sqlite_round_trips_tab_groups() {
         left_panel: None,
         right_panel: None,
         group_id: None,
+        project_path: None,
     };
 
     let app_state = AppState {

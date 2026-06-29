@@ -791,6 +791,7 @@ pub struct TabComponent<'a> {
     /// both the in-selection highlight and the right-click menu dispatch
     /// (multi-tab menu vs single-tab menu).
     is_in_multi_tab_selection: bool,
+    project_pin_path: Option<PathBuf>,
     project_is_pinned: bool,
 }
 
@@ -958,7 +959,8 @@ impl<'a> TabComponent<'a> {
             pane_group_id,
             pane_id,
         };
-        let project_is_pinned = tab.project_path.as_ref().is_some_and(|path| {
+        let project_pin_path = Self::project_pin_path(tab, ctx);
+        let project_is_pinned = project_pin_path.as_ref().is_some_and(|path| {
             ProjectManagementModel::handle(ctx).read(ctx, |projects, _| {
                 projects.is_project_pinned(path)
             })
@@ -985,6 +987,7 @@ impl<'a> TabComponent<'a> {
             sole_grouped_member: false,
             locator,
             is_in_multi_tab_selection: false,
+            project_pin_path,
             project_is_pinned,
         }
     }
@@ -1173,6 +1176,15 @@ impl<'a> TabComponent<'a> {
             })
     }
 
+    fn project_pin_path(tab: &TabData, ctx: &AppContext) -> Option<PathBuf> {
+        tab.project_path.clone().or_else(|| {
+            tab.pane_group
+                .as_ref(ctx)
+                .focused_session_view(ctx)
+                .and_then(|view| view.as_ref(ctx).active_session_path_if_local(ctx))
+        })
+    }
+
     /// Generate the SavePosition ID for the tab text content
     fn tab_text_position_id(&self) -> String {
         format!("tab_text_{}", self.tab_index)
@@ -1319,7 +1331,7 @@ impl<'a> TabComponent<'a> {
     }
 
     fn render_project_pin_button(&self) -> Option<Box<dyn Element>> {
-        let project_path = self.tab.project_path.clone()?;
+        let project_path = self.project_pin_path.clone()?;
         let pin_mouse_state = self.tab.project_pin_mouse_state.clone();
         let icon = if self.project_is_pinned {
             Icon::PinFilled
@@ -1361,14 +1373,10 @@ impl<'a> TabComponent<'a> {
             .finish();
 
         Some(
-            Container::new(
-                ConstrainedBox::new(button)
-                    .with_width(TAB_CLOSE_BUTTON_WIDTH)
-                    .with_height(TAB_CLOSE_BUTTON_WIDTH)
-                    .finish(),
-            )
-            .with_margin_left(4.)
-            .finish(),
+            ConstrainedBox::new(button)
+                .with_width(TAB_CLOSE_BUTTON_WIDTH)
+                .with_height(TAB_CLOSE_BUTTON_WIDTH)
+                .finish(),
         )
     }
 
@@ -1591,11 +1599,8 @@ impl<'a> TabComponent<'a> {
                 )
                 .finish(),
             );
-            if let Some(pin_button) = self.render_project_pin_button() {
-                flex_row.add_child(pin_button);
-            }
-            let right_padding = if self.tab.project_path.is_some() {
-                TAB_CLOSE_BUTTON_WIDTH + 8.
+            let right_padding = if self.project_pin_path.is_some() {
+                (TAB_CLOSE_BUTTON_WIDTH * 2.) + 12.
             } else {
                 8.
             };
@@ -1710,6 +1715,23 @@ impl<'a> TabComponent<'a> {
         };
 
         let mut full_stack = Stack::new().with_child(full_tab_content);
+        if let Some(pin_button) = self.render_project_pin_button() {
+            let pin_horizontal_inset = match parent_anchor {
+                ParentAnchor::MiddleLeft | ParentAnchor::TopLeft => {
+                    horizontal_inset + TAB_CLOSE_BUTTON_WIDTH + 4.
+                }
+                _ => horizontal_inset - TAB_CLOSE_BUTTON_WIDTH - 4.,
+            };
+            full_stack.add_positioned_overlay_child(
+                pin_button,
+                OffsetPositioning::offset_from_parent(
+                    vec2f(pin_horizontal_inset, 0.0),
+                    ParentOffsetBounds::ParentByPosition,
+                    parent_anchor,
+                    child_anchor,
+                ),
+            );
+        }
         full_stack.add_positioned_child(
             build_close_button_overlay(is_hovered),
             OffsetPositioning::offset_from_parent(

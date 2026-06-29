@@ -12674,6 +12674,9 @@ impl TerminalView {
                     BlockMetadataUpdateSource::Precmd,
                     ctx,
                 );
+                if !block_metadata_received_event.is_after_in_band_command {
+                    self.record_active_local_project_path(ctx);
+                }
             }
             ModelEvent::BlockWorkingDirectoryUpdated(block_working_directory_updated_event) => {
                 self.apply_block_metadata_update(
@@ -12700,6 +12703,7 @@ impl TerminalView {
                 // can re-fire chip generators that schedule another in-band
                 // command, leading to a refresh loop.
                 if !block_working_directory_updated_event.is_for_in_band_command {
+                    self.record_active_local_project_path(ctx);
                     self.refresh_warp_prompt(ctx);
                 }
             }
@@ -23278,6 +23282,14 @@ impl TerminalView {
     pub fn pwd_if_local(&self, ctx: &AppContext) -> Option<String> {
         self.active_session_path_if_local(ctx)
             .map(|path| path.to_string_lossy().into_owned())
+    }
+
+    fn record_active_local_project_path(&self, ctx: &mut ViewContext<Self>) {
+        if let Some(path) = self.active_session_path_if_local(ctx) {
+            ProjectManagementModel::handle(ctx).update(ctx, |projects, ctx| {
+                projects.upsert_project(path, ctx);
+            });
+        }
     }
 
     /// Returns the active session's CWD as a `LocalOrRemotePath`.

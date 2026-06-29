@@ -1354,7 +1354,9 @@ impl<'a> TabComponent<'a> {
             .with_tooltip(move || ui_builder.tool_tip(tooltip_label).build().finish())
             .build()
             .on_click(move |ctx, _, _| {
-                ctx.dispatch_typed_action(WorkspaceAction::ToggleProjectPin { path: project_path })
+                ctx.dispatch_typed_action(WorkspaceAction::ToggleProjectPin {
+                    path: project_path.clone(),
+                })
             })
             .finish();
 

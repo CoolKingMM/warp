@@ -11458,9 +11458,87 @@ impl Workspace {
         );
         let tab_index = self.active_tab_index;
         if let Some(tab) = self.tabs.get_mut(tab_index) {
+            let pinned = ProjectManagementModel::handle(ctx)
+                .read(ctx, |projects, _| projects.is_project_pinned(&project_path));
             tab.project_path = Some(project_path);
+            tab.pinned = pinned;
         }
         tab_index
+    }
+
+    fn project_pin_path_for_tab(tab: &TabData, ctx: &AppContext) -> Option<PathBuf> {
+        tab.project_path.clone().or_else(|| {
+            tab.pane_group
+                .as_ref(ctx)
+                .focused_session_view(ctx)
+                .and_then(|view| view.as_ref(ctx).active_session_path_if_local(ctx))
+        })
+    }
+
+    fn sync_project_tab_pin_states(&mut self, ctx: &mut ViewContext<Self>) {
+        let project_paths = self
+            .tabs
+            .iter()
+            .map(|tab| Self::project_pin_path_for_tab(tab, ctx))
+            .collect::<Vec<_>>();
+
+        let pinned_states = ProjectManagementModel::handle(ctx).read(ctx, |projects, _| {
+            project_paths
+                .iter()
+                .map(|path| {
+                    path.as_ref()
+                        .is_some_and(|path| projects.is_project_pinned(path))
+                })
+                .collect::<Vec<_>>()
+        });
+
+        for (tab, pinned) in self.tabs.iter_mut().zip(pinned_states) {
+            tab.pinned = pinned;
+        }
+    }
+
+    fn reposition_project_tab_after_pin_change(
+        &mut self,
+        tab_index: usize,
+        pinned: bool,
+        ctx: &mut ViewContext<Self>,
+    ) {
+        let Some(tab) = self.tabs.get_mut(tab_index) else {
+            return;
+        };
+        tab.pinned = pinned;
+
+        if tab.group_id.is_some() {
+            ctx.notify();
+            return;
+        }
+
+        let active_pane_group_id = self
+            .tabs
+            .get(self.active_tab_index)
+            .map(|tab| tab.pane_group.id());
+
+        let tab = self.tabs.remove(tab_index);
+        let insert_index = self
+            .tabs
+            .iter()
+            .take_while(|tab| tab.pinned)
+            .count()
+            .min(self.tabs.len());
+        self.tabs.insert(insert_index, tab);
+
+        if let Some(active_id) = active_pane_group_id {
+            if let Some(new_index) = self
+                .tabs
+                .iter()
+                .position(|tab| tab.pane_group.id() == active_id)
+            {
+                self.active_tab_index = new_index;
+            }
+        }
+
+        ctx.dispatch_global_action("workspace:save_app", ());
+        ctx.notify();
     }
 
     fn open_startup_project_tabs(&mut self, ctx: &mut ViewContext<Self>) -> bool {
@@ -24759,10 +24837,13 @@ impl TypedActionView for Workspace {
             OpenRepository { path } => {
                 self.open_repository(path.as_deref(), ctx);
             }
-            ToggleProjectPin { path } => {
-                ProjectManagementModel::handle(ctx).update(ctx, |projects, ctx| {
+            ToggleProjectPin { path, tab_index } => {
+                let pinned = ProjectManagementModel::handle(ctx).update(ctx, |projects, ctx| {
                     projects.toggle_project_pinned(path.clone(), ctx);
+                    projects.is_project_pinned(path)
                 });
+                self.sync_project_tab_pin_states(ctx);
+                self.reposition_project_tab_after_pin_change(*tab_index, pinned, ctx);
                 ctx.notify();
             }
             OpenTabConfigRepoPicker { param_index } => {

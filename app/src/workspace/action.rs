@@ -646,6 +646,7 @@ pub enum WorkspaceAction {
     },
     ToggleProjectPin {
         path: PathBuf,
+        tab_index: usize,
     },
     /// Open the native folder picker for a repo param in the tab-config modal after the
     /// current interaction cycle finishes.

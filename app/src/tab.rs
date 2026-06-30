@@ -2016,6 +2016,7 @@ impl UiComponent for TabComponent<'_> {
                         if rect.contains_point(position) {
                             ctx.dispatch_typed_action(WorkspaceAction::ToggleProjectPin {
                                 path: project_path.clone(),
+                                tab_index,
                             });
                             return;
                         }

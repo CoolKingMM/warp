@@ -34,7 +34,7 @@ use crate::editor::EditorView;
 use crate::features::FeatureFlag;
 use crate::launch_configs::launch_config::LaunchConfig;
 use crate::menu::{MenuAction, MenuItem, MenuItemFields};
-use crate::pane_group::{PaneGroup, PaneId};
+use crate::pane_group::{CodePane, FilePane, PaneGroup, PaneId};
 use crate::projects::ProjectManagementModel;
 use crate::shell_indicator::ShellIndicatorType;
 use crate::terminal::shared_session::render_util::shared_session_indicator_color;
@@ -1178,11 +1178,26 @@ impl<'a> TabComponent<'a> {
 
     fn project_pin_path(tab: &TabData, ctx: &AppContext) -> Option<PathBuf> {
         tab.project_path.clone().or_else(|| {
-            tab.pane_group
-                .as_ref(ctx)
+            let pane_group = tab.pane_group.as_ref(ctx);
+            pane_group
                 .focused_session_view(ctx)
                 .and_then(|view| view.as_ref(ctx).active_session_path_if_local(ctx))
+                .or_else(|| Self::focused_local_file_directory(&pane_group, ctx))
         })
+    }
+
+    fn focused_local_file_directory(pane_group: &PaneGroup, ctx: &AppContext) -> Option<PathBuf> {
+        let focused_pane_id = pane_group.focused_pane_id(ctx);
+
+        pane_group
+            .downcast_pane_by_id::<CodePane>(focused_pane_id)
+            .and_then(|pane| pane.file_view(ctx).as_ref(ctx).local_path(ctx))
+            .or_else(|| {
+                pane_group
+                    .downcast_pane_by_id::<FilePane>(focused_pane_id)
+                    .and_then(|pane| pane.file_view(ctx).as_ref(ctx).local_path())
+            })
+            .and_then(|path| path.parent().map(PathBuf::from))
     }
 
     /// Generate the SavePosition ID for the tab text content
@@ -1335,7 +1350,7 @@ impl<'a> TabComponent<'a> {
         background: Option<Fill>,
         is_hovered: bool,
     ) -> Option<Box<dyn Element>> {
-        self.project_pin_path.as_ref()?;
+        let project_path = self.project_pin_path.clone()?;
         let pin_mouse_state = self.tab.project_pin_mouse_state.clone();
         let icon = if self.project_is_pinned {
             Icon::PinFilled
@@ -1358,6 +1373,7 @@ impl<'a> TabComponent<'a> {
         }
         .to_string();
         let ui_builder = self.ui_builder.clone();
+        let tab_index = self.tab_index;
         let default_background = if is_hovered {
             background.unwrap_or(Fill::None)
         } else {
@@ -1378,6 +1394,12 @@ impl<'a> TabComponent<'a> {
             })
             .with_tooltip(move || ui_builder.tool_tip(tooltip_label).build().finish())
             .build()
+            .on_click(move |ctx, _, _| {
+                ctx.dispatch_typed_action(WorkspaceAction::ToggleProjectPin {
+                    path: project_path.clone(),
+                    tab_index,
+                })
+            })
             .finish();
 
         Some(
@@ -1863,8 +1885,6 @@ impl UiComponent for TabComponent<'_> {
         let sole_grouped_member = self.sole_grouped_member;
         let locator = self.locator;
         let is_in_multi_tab_selection = self.is_in_multi_tab_selection;
-        let project_pin_path = self.project_pin_path.clone();
-        let project_pin_button_position_id = format!("project_pin_button:{tab_index}");
 
         // Extract values before moving self into closure
         let tooltip_text = self.tooltip_message.clone();
@@ -2009,19 +2029,7 @@ impl UiComponent for TabComponent<'_> {
             // Modifier-aware mouse-down: shift extends the selection range,
             // cmd toggles a tab in/out of the selection, plain press
             // activates.
-            tab = tab.on_mouse_down_with_modifiers(move |ctx, _, position, modifiers| {
-                if let Some(project_path) = project_pin_path.as_ref() {
-                    if let Some(rect) = ctx.element_position_by_id(&project_pin_button_position_id)
-                    {
-                        if rect.contains_point(position) {
-                            ctx.dispatch_typed_action(WorkspaceAction::ToggleProjectPin {
-                                path: project_path.clone(),
-                                tab_index,
-                            });
-                            return;
-                        }
-                    }
-                }
+            tab = tab.on_mouse_down_with_modifiers(move |ctx, _, _, modifiers| {
                 let close_hovered = mouse_close_state
                     .lock()
                     .expect("lock acquired")

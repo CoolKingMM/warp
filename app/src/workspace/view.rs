@@ -11468,11 +11468,26 @@ impl Workspace {
 
     fn project_pin_path_for_tab(tab: &TabData, ctx: &AppContext) -> Option<PathBuf> {
         tab.project_path.clone().or_else(|| {
-            tab.pane_group
-                .as_ref(ctx)
+            let pane_group = tab.pane_group.as_ref(ctx);
+            pane_group
                 .focused_session_view(ctx)
                 .and_then(|view| view.as_ref(ctx).active_session_path_if_local(ctx))
+                .or_else(|| Self::focused_local_file_directory(&pane_group, ctx))
         })
+    }
+
+    fn focused_local_file_directory(pane_group: &PaneGroup, ctx: &AppContext) -> Option<PathBuf> {
+        let focused_pane_id = pane_group.focused_pane_id(ctx);
+
+        pane_group
+            .downcast_pane_by_id::<CodePane>(focused_pane_id)
+            .and_then(|pane| pane.file_view(ctx).as_ref(ctx).local_path(ctx))
+            .or_else(|| {
+                pane_group
+                    .downcast_pane_by_id::<FilePane>(focused_pane_id)
+                    .and_then(|pane| pane.file_view(ctx).as_ref(ctx).local_path())
+            })
+            .and_then(|path| path.parent().map(Path::to_path_buf))
     }
 
     fn sync_project_tab_pin_states(&mut self, ctx: &mut ViewContext<Self>) {

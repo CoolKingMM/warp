@@ -105,9 +105,6 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           NO_LICENSES: 1
           SKIP_SETTINGS_SCHEMA: 1
-          # Route rustc through sccache only for the actual build. Scoping it here
-          # (rather than job-wide) keeps the dependency-install steps unaffected.
-          RUSTC_WRAPPER: sccache
         run: |
           $diagnosticsDir = Join-Path $env:RUNNER_TEMP 'warp-build-diagnostics'
           New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null

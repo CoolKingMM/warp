@@ -2723,12 +2723,6 @@ impl Workspace {
             me.handle_referral_theme_status_event(event, ctx);
         });
 
-        let referrals_client = ServerApiProvider::as_ref(ctx).get_referrals_client();
-        // On startup, check if the user has earned a referral theme by referring other users
-        referral_theme_status.update(ctx, |model, ctx| {
-            model.query_referral_status(referrals_client, ctx);
-        });
-
         let bindings_notifier = KeybindingChangedNotifier::handle(ctx);
         ctx.subscribe_to_model(&bindings_notifier, |me, _, event, ctx| {
             me.handle_keybinding_changed(event, ctx);
@@ -15439,17 +15433,7 @@ impl Workspace {
             pane_group::Event::OpenSettings(section) => {
                 self.show_settings_with_section(Some(*section), ctx);
             }
-            pane_group::Event::OpenAutoReloadModal { purchased_credits } => {
-                #[cfg(not(feature = "oss_slim"))]
-                {
-                    self.current_workspace_state
-                        .is_enable_auto_reload_modal_open = true;
-                    self.enable_auto_reload_modal.update(ctx, |modal, ctx| {
-                        modal.set_selected_denomination_by_credits(*purchased_credits, ctx);
-                    });
-                    ctx.notify();
-                }
-            }
+            pane_group::Event::OpenAutoReloadModal { .. } => {}
             #[cfg(not(target_family = "wasm"))]
             pane_group::Event::OpenPluginInstructionsPane(agent, kind) => {
                 self.open_plugin_instructions_pane(*agent, *kind, ctx);

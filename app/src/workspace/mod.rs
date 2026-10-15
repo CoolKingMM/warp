@@ -1,7 +1,7 @@
 mod action;
 mod active_session;
 pub(crate) mod auto_handoff;
-pub mod bonus_grant_notification_model;
+
 #[cfg(target_os = "macos")]
 mod cli_install;
 mod close_session_confirmation_dialog;
@@ -38,6 +38,13 @@ pub use view::{
     Workspace, NEW_SESSION_MENU_BUTTON_POSITION_ID, NEW_TAB_BUTTON_POSITION_ID,
     PANEL_HEADER_HEIGHT, TAB_BAR_HEIGHT, TOTAL_TAB_BAR_HEIGHT, WORKSPACE_PADDING,
 };
+
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum CloudAgentCapacityModalVariant {
+    #[default]
+    ConcurrentLimit,
+    OutOfCredits,
+}
 use warp_core::context_flag::ContextFlag;
 use warpui::accessibility::AccessibilityVerbosity;
 use warpui::elements::DropTargetData;
@@ -87,12 +94,6 @@ pub fn init(app: &mut AppContext) {
     rewind_confirmation_dialog::init(app);
     delete_conversation_confirmation_dialog::init(app);
     crate::tab_configs::remove_confirmation_dialog::init(app);
-#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
-pub enum CloudAgentCapacityModalVariant {
-    #[default]
-    ConcurrentLimit,
-    OutOfCredits,
-}
 
     #[cfg(not(feature = "oss_slim"))]
     hoa_onboarding::init(app);

@@ -17,6 +17,8 @@ impl TelemetryCollector {
     pub fn initialize_telemetry_collection(&self, _ctx: &mut ModelContext<TelemetryCollector>) {}
 
     pub fn write_telemetry_events_to_disk(&self, _ctx: &mut ModelContext<TelemetryCollector>) {}
+
+    pub fn flush_telemetry_events_for_shutdown(&mut self, _ctx: &mut ModelContext<TelemetryCollector>) {}
 }
 
 impl Entity for TelemetryCollector {

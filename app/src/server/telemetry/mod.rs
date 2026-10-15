@@ -32,7 +32,9 @@ pub fn clear_event_queue() {
 }
 
 /// Stub telemetry API with all network transmission and tracking mechanisms physically removed.
-pub struct TelemetryApi;
+pub struct TelemetryApi {
+    pub(super) client: http_client::Client,
+}
 
 impl Default for TelemetryApi {
     fn default() -> Self {
@@ -42,7 +44,17 @@ impl Default for TelemetryApi {
 
 impl TelemetryApi {
     pub fn new() -> Self {
-        Self
+        Self {
+            client: http_client::Client::default(),
+        }
+    }
+
+    pub fn flush_and_persist_events(
+        &self,
+        _max_event_count: usize,
+        _settings_snapshot: PrivacySettingsSnapshot,
+    ) -> Result<()> {
+        Ok(())
     }
 
     /// Clears any queued events without sending anything over the network.

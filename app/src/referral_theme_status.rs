@@ -15,6 +15,8 @@ impl ReferralThemeStatus {
         Self
     }
 
+    pub fn query_referral_status(&mut self, _ctx: &mut ModelContext<Self>) {}
+
     pub fn query_remote_status(&mut self, _ctx: &mut ModelContext<Self>) {}
 
     pub fn sent_referral_theme_active(&self) -> bool {

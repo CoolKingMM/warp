@@ -2018,7 +2018,6 @@ pub(crate) fn initialize_app(
         }
     }
 
-    #[cfg(not(feature = "oss_slim"))]
     AutoupdateState::register(ctx, server_api.clone());
 
     ctx.add_singleton_model(LocalWorkflows::new);

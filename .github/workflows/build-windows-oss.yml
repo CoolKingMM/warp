@@ -152,7 +152,6 @@ jobs:
         run: sccache --show-stats
 
       - name: Stage portable artifact
-        if: ${{ github.ref_type != 'tag' && github.event_name == 'workflow_dispatch' }}
         id: portable
         shell: pwsh
         env:

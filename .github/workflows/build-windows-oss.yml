@@ -62,7 +62,7 @@ jobs:
           is_self_hosted: false
           install_release_deps: false
           cache_key: windows-oss-release
-          save_cache: ${{ github.ref == 'refs/heads/master' }}
+          save_cache: 'true'
 
       - name: Install Inno Setup
         if: ${{ github.ref_type == 'tag' }}

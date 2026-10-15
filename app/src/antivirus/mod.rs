@@ -13,7 +13,7 @@ pub struct AntivirusInfo(Option<String>);
 
 impl AntivirusInfo {
     pub fn new(_ctx: &mut ModelContext<Self>) -> Self {
-        #[cfg(windows)]
+        #[cfg(all(windows, not(feature = "oss_slim")))]
         _ctx.spawn(async move { Self::scan().await }, Self::on_scan_complete);
 
         Self(None)

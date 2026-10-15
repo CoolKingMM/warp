@@ -1404,8 +1404,10 @@ pub(crate) fn initialize_app(
     }
     timer.mark_interval_end("INIT_CRASH_REPORTING");
 
-    if let LaunchMode::App { .. } = launch_mode {
-        autoupdate::check_and_report_update_errors(ctx);
+    if !cfg!(feature = "oss_slim") {
+        if let LaunchMode::App { .. } = launch_mode {
+            autoupdate::check_and_report_update_errors(ctx);
+        }
     }
 
     ctx.set_fallback_font_source_provider(|url| ::asset_cache::url_source(url));
@@ -2029,6 +2031,7 @@ pub(crate) fn initialize_app(
         }
     }
 
+    #[cfg(not(feature = "oss_slim"))]
     AutoupdateState::register(ctx, server_api.clone());
 
     ctx.add_singleton_model(LocalWorkflows::new);
@@ -2294,7 +2297,9 @@ pub(crate) fn app_callbacks(
             // ensure that the new process doesn't find the old process while
             // attempting to enforce our single-instance policy on Linux.
             app_services::teardown(ctx);
-            autoupdate::spawn_child_if_necessary(ctx);
+            if !cfg!(feature = "oss_slim") {
+                autoupdate::spawn_child_if_necessary(ctx);
+            }
 
             // Tear down any application profilers that are running, writing
             // results to disk.
@@ -2369,12 +2374,16 @@ pub(crate) fn app_callbacks(
 
             // If there's a pending autoupdate, apply that before showing the unsaved changes
             // dialog. We apply the update first so that the dialog can force-terminate.
-            let applying_update = autoupdate::apply_pending_update(ctx, |ctx| {
+            let applying_update = if cfg!(feature = "oss_slim") {
+                false
+            } else {
+                autoupdate::apply_pending_update(ctx, |ctx| {
                 // Once the deferred update is applied, re-terminate the app. This termination is
                 // cancellable so that we still show the unsaved changes dialog.
                 log::info!("Deferred autoupdate applied, terminating app");
                 ctx.terminate_app(TerminationMode::Cancellable, None);
-            });
+                })
+            };
             if applying_update {
                 return ApproveTerminateResult::Cancel;
             }

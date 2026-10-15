@@ -71,6 +71,10 @@ impl ReferralThemeStatus {
         referrals_client: Arc<dyn ReferralsClient>,
         ctx: &mut ModelContext<Self>,
     ) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         if !AuthStateProvider::as_ref(ctx).get().is_logged_in() {
             return;
         }

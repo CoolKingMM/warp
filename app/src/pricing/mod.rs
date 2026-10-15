@@ -1,4 +1,6 @@
-use warp_graphql::billing::{AddonCreditsOption, PlanPricing, PricingInfo};
+use warp_graphql::billing::{
+    AddonCreditsOption, PlanPricing, PricingInfo, StripeSubscriptionPlan,
+};
 use warpui::{Entity, ModelContext, SingletonEntity};
 
 /// A global model for maintaining pricing information from the server.
@@ -17,6 +19,15 @@ impl PricingInfoModel {
     pub fn update_pricing_info(&mut self, pricing_info: PricingInfo, ctx: &mut ModelContext<Self>) {
         self.pricing_info = Some(pricing_info);
         ctx.emit(PricingInfoModelEvent::PricingInfoUpdated);
+    }
+
+    /// Returns the pricing for a specific plan.
+    pub fn plan_pricing(&self, plan: &StripeSubscriptionPlan) -> Option<&PlanPricing> {
+        self.pricing_info
+            .as_ref()?
+            .plans
+            .iter()
+            .find(|p| &p.plan == plan)
     }
 
     /// Returns the pricing data for all known plans, or an empty slice if

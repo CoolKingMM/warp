@@ -18384,6 +18384,9 @@ impl Workspace {
         event: &ReferralThemeEvent,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
         // A referral theme was activated, so we need to show the reward modal
         // If the changelog modal is currently shown or pending, then we delay showing the
         // reward modal until after that is completed / closed.
@@ -19042,6 +19045,9 @@ impl Workspace {
         team_uid: ServerId,
         ctx: &mut ViewContext<Self>,
     ) {
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
         let team = UserWorkspaces::as_ref(ctx).team_from_uid(team_uid);
         if let Some(team) = team {
             let current_user_email = self.auth_state.user_email().unwrap_or_default();

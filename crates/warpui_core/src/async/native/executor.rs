@@ -149,9 +149,9 @@ impl Default for Background {
             // test.
             1
         } else {
-            // In production, create a thread for each logical CPU core,
-            // maximizing our possible parallelism.
-            num_cpus::get()
+            // In production, limit Tokio worker threads to avoid thread explosion
+            // on high-core machines while maintaining maximum responsiveness.
+            num_cpus::get().min(4)
         };
 
         Self::new(num_threads, |i| format!("background-executor-{i}"))

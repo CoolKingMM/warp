@@ -1,0 +1,55 @@
+name: Publish Artifact to Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Source workflow run ID that contains WarpOssPortable-windows-x64"
+        required: true
+        default: "38705996014"
+      tag_name:
+        description: "Release tag name (e.g. v0.0.0-oss-slim-pruned-c2944ba)"
+        required: true
+        default: "v0.0.0-oss-slim-pruned-c2944ba"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Publish Artifact to Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download artifact and pack zip
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh run download ${{ inputs.run_id }} --name WarpOssPortable-windows-x64 --dir WarpOssPortable
+          Compress-Archive -Path WarpOssPortable/* -DestinationPath WarpOssPortable-windows-x64.zip -CompressionLevel Optimal
+          Get-Item WarpOssPortable-windows-x64.zip | Select-Object Name, Length
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $notes = @"
+          # Warp OSS Slim (Deep Pruned & Optimized)
+          
+          - **Commit**: ${{ github.sha }}
+          - **Source Actions Run**: https://github.com/${{ github.repository }}/actions/runs/${{ inputs.run_id }}
+          - **Summary of Cleanups**:
+            - Physically removed unused modules: `antivirus`, `reward_view`, and `billing`
+            - Decoupled `shared_objects_creation_denied_modal` and `reward_modal`
+            - Constrained Tokio background worker pool to 4 threads for lower memory footprint
+            - Fixed Windows CI command-line buffer overflow error
+            - Enabled full dependency cache saving in GitHub Actions
+          "@
+          
+          gh release create ${{ inputs.tag_name }} WarpOssPortable-windows-x64.zip `
+            --title "Warp OSS ${{ inputs.tag_name }}" `
+            --notes $notes

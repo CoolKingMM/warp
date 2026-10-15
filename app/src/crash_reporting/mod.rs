@@ -25,7 +25,6 @@ use warpui::windowing::state::ApplicationStage;
 use warpui::windowing::{self, StateEvent, WindowManager};
 use warpui::{AppContext, SingletonEntity};
 
-use crate::antivirus::{AntivirusInfo, AntivirusInfoEvent};
 use crate::auth::{AuthStateProvider, UserUid};
 use crate::channel::ChannelState;
 use crate::features::FeatureFlag;
@@ -82,13 +81,6 @@ pub(crate) fn set_gpu_device_info(gpu_device_info: GPUDeviceInfo) {
     }
 }
 
-/// Sets the [`AntivirusInfo`] for use in logging as a Sentry tag.
-/// Only reports the first detected antivirus product.
-pub fn set_antivirus_info(antivirus_info: &AntivirusInfo) {
-    for (key, value) in antivirus_info.to_sentry_tags() {
-        set_tag(key, value);
-    }
-}
 
 /// Sets the current application lifecycle stage, for use in logging as a Sentry tag.
 fn set_lifecycle_stage(stage: ApplicationStage) {
@@ -195,13 +187,6 @@ pub(crate) fn init(ctx: &mut AppContext) -> bool {
         }
     });
 
-    let antivirus_info = AntivirusInfo::handle(ctx);
-    ctx.subscribe_to_model(&antivirus_info, |antivirus_info, event, ctx| match event {
-        AntivirusInfoEvent::ScannedComplete => {
-            let antivirus_info = antivirus_info.as_ref(ctx);
-            set_antivirus_info(antivirus_info);
-        }
-    });
 
     let is_crash_reporting_enabled = is_crash_reporting_enabled(ctx);
 
@@ -607,11 +592,3 @@ impl ToSentryTags for Option<windowing::System> {
     }
 }
 
-impl ToSentryTags for &AntivirusInfo {
-    fn to_sentry_tags(&self) -> impl IntoIterator<Item = (&str, String)> {
-        [(
-            "warp.window.antivirus.name",
-            self.get().unwrap_or("none").into(),
-        )]
-    }
-}

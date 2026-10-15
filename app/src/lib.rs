@@ -2,7 +2,6 @@
 
 mod ai;
 mod alloc;
-mod antivirus;
 #[cfg(target_os = "macos")]
 mod app_menus;
 mod app_services;
@@ -10,7 +9,6 @@ mod app_state;
 mod auth;
 mod autoupdate;
 mod banner;
-mod billing;
 mod changelog_model;
 mod chip_configurator;
 mod cloud_object;
@@ -68,7 +66,6 @@ mod referral_theme_status;
 #[allow(dead_code)]
 mod remote_server;
 mod resource_limits;
-mod reward_view;
 mod safe_triangle;
 mod search_bar;
 mod server;
@@ -251,7 +248,6 @@ use crate::ai::outline::RepoOutlines;
 use crate::ai::restored_conversations::RestoredAgentConversations;
 use crate::ai::skills::SkillManager;
 use crate::ai::AIRequestUsageModel;
-use crate::antivirus::AntivirusInfo;
 use crate::app_state::AppState;
 use crate::autoupdate::{AutoupdateState, RelaunchModel};
 use crate::changelog_model::ChangelogModel;
@@ -1388,7 +1384,6 @@ pub(crate) fn initialize_app(
         manager
     });
 
-    ctx.add_singleton_model(AntivirusInfo::new);
 
     cfg_if::cfg_if! {
         if #[cfg(feature = "crash_reporting")] {
@@ -1696,15 +1691,11 @@ pub(crate) fn initialize_app(
     voltron::init(ctx);
     #[cfg(not(feature = "oss_slim"))]
     auth::init(ctx);
-    #[cfg(not(feature = "oss_slim"))]
-    reward_view::init(ctx);
     crate::view_components::find::init(ctx);
     prompt::editor_modal::init(ctx);
     #[cfg(not(feature = "oss_slim"))]
     ai::blocklist::agent_view::editor::init(ctx);
     undo_close::init(ctx);
-    #[cfg(not(feature = "oss_slim"))]
-    billing::shared_objects_creation_denied_modal::init(ctx);
     tab_configs::new_worktree_modal::init(ctx);
     tab_configs::params_modal::init(ctx);
     #[cfg(not(feature = "oss_slim"))]

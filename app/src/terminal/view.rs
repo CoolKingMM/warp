@@ -296,7 +296,6 @@ use crate::ai::predict::prompt_suggestions::{
     is_accept_prompt_suggestion_bound_to_ctrl_enter,
 };
 use crate::ai_assistant::{AskAIType, ASK_AI_ASSISTANT_TEXT};
-use crate::antivirus::AntivirusInfo;
 use crate::appearance::{Appearance, AppearanceEvent};
 use crate::auth::auth_manager::AuthManager;
 use crate::auth::auth_state::AuthState;
@@ -11040,7 +11039,7 @@ impl TerminalView {
 
             if let Some(termination_reason) = termination_reason {
                 let (shell_path, shell_type) = self.get_shell_starter_local(ctx).unzip();
-                let antivirus_name = AntivirusInfo::as_ref(ctx).get();
+                let antivirus_name: Option<&str> = None;
 
                 let long_os_version = crate::system::long_os_version(ctx);
 

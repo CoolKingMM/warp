@@ -765,7 +765,7 @@ pub enum Event {
         log_path: PathBuf,
     },
     ShowCloudAgentCapacityModal {
-        variant: crate::workspace::view::cloud_agent_capacity_modal::CloudAgentCapacityModalVariant,
+        variant: crate::workspace::CloudAgentCapacityModalVariant,
     },
     FreeTierLimitCheckTriggered,
     #[cfg(not(target_family = "wasm"))]

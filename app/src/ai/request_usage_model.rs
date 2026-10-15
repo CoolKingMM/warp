@@ -604,16 +604,6 @@ impl AIRequestUsageModel {
             BuyCreditsBannerDisplayState::Hidden
         }
     }
-
-    pub fn dismiss_buy_credits_banner(&mut self, ctx: &mut ModelContext<Self>) {
-        self.buy_addon_credits_banner_dismissed = true;
-        ctx.notify();
-    }
-
-    pub fn enable_buy_credits_banner(&mut self, ctx: &mut ModelContext<Self>) {
-        self.buy_addon_credits_banner_dismissed = false;
-        ctx.notify();
-    }
 }
 
 /// Voice request usage, only available if built with voice input support.

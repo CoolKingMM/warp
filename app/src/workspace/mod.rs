@@ -87,17 +87,20 @@ pub fn init(app: &mut AppContext) {
     rewind_confirmation_dialog::init(app);
     delete_conversation_confirmation_dialog::init(app);
     crate::tab_configs::remove_confirmation_dialog::init(app);
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
+pub enum CloudAgentCapacityModalVariant {
+    #[default]
+    ConcurrentLimit,
+    OutOfCredits,
+}
+
     #[cfg(not(feature = "oss_slim"))]
     hoa_onboarding::init(app);
     tab_configs::session_config_modal::init(app);
     #[cfg(not(feature = "oss_slim"))]
     {
-        view::launch_modal::oz_launch::init(app);
         view::openwarp_launch_modal::init(app);
         view::orchestration_launch_modal::init(app);
-        view::cloud_agent_capacity_modal::init(app);
-        view::codex_modal::init(app);
-        view::free_tier_limit_hit_modal::init(app);
     }
     view::global_search::view::GlobalSearchView::init(app);
     view::right_panel::RightPanelView::init(app);

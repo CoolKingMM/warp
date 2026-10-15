@@ -259,7 +259,13 @@ jobs:
           $installerPath = '${{ steps.bundle.outputs.installer_path }}'
           $releaseInstallerPath = Join-Path $releaseDir 'WarpOssSetup.exe'
           Copy-Item -LiteralPath $installerPath -Destination $releaseInstallerPath -Force
+
+          $portableDir = '${{ steps.portable.outputs.portable_path }}'
+          $portableZipPath = Join-Path $releaseDir 'WarpOssPortable-windows-x64.zip'
+          Compress-Archive -Path "$portableDir\*" -DestinationPath $portableZipPath -CompressionLevel Optimal
+
           "installer_path=release-assets/WarpOssSetup.exe" >> $env:GITHUB_OUTPUT
+          "portable_zip=release-assets/WarpOssPortable-windows-x64.zip" >> $env:GITHUB_OUTPUT
 
       - name: Upload build diagnostics
         if: ${{ failure() }}
@@ -275,5 +281,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: Warp OSS ${{ github.ref_name }}
-          files: ${{ steps.release_installer.outputs.installer_path }}
+          files: |
+            ${{ steps.release_installer.outputs.installer_path }}
+            ${{ steps.release_installer.outputs.portable_zip }}
           fail_on_unmatched_files: true

@@ -2667,6 +2667,14 @@ fn launch(ctx: &mut warpui::AppContext, app_state: Option<AppState>, launch_mode
                 timer.mark_interval_end("WINDOWS_CREATED");
             });
 
+            #[cfg(target_os = "windows")]
+            {
+                ctx.background_executor().spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(8)).await;
+                    warpui::platform::windows::trim_working_set();
+                }).detach();
+            }
+
             // TODO(ben): We should skip this for LaunchMode::Test.
             #[cfg(any(target_os = "macos", target_os = "windows"))]
             {

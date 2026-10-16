@@ -51,3 +51,14 @@ unsafe fn set_app_user_model_id(app_id: String) -> Result<(), windows::core::Err
         wide_string.as_ptr(),
     ))
 }
+
+/// Trims the process working set, actively releasing cold/cached pages to the operating system.
+/// This drastically reduces physical memory consumption without altering application state.
+pub fn trim_working_set() {
+    unsafe {
+        use windows::Win32::System::Memory::SetProcessWorkingSetSize;
+        use windows::Win32::System::Threading::GetCurrentProcess;
+        let _ = SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
+    }
+}
+

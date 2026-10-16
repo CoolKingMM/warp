@@ -1393,6 +1393,8 @@ impl EventLoop {
                 if !is_focused {
                     window_state.left_alt_pressed = false;
                     window_state.right_alt_pressed = false;
+                    #[cfg(target_os = "windows")]
+                    crate::platform::windows::trim_working_set();
                 }
 
                 // On the next tick of the event loop, notify the ui_app that focus has

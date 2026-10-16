@@ -69,3 +69,7 @@ __pycache__/
 
 # Project notes
 .note/
+
+# Local action artifacts and downloads
+.tmp/
+

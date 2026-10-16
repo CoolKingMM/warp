@@ -1,112 +1,63 @@
-<a href="https://www.warp.dev">
-    <img width="1024" alt="Warp Agentic Development Environment product preview" src="https://github.com/user-attachments/assets/9976b2da-2edd-4604-a36c-8fd53719c6d4" />
-</a>
-&nbsp;
-<p align="center">
-  <a href="https://www.warp.dev"><img height="20" alt="Built with Warp" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/main/Github/Built-With-Warp-Export@2x.png" /></a>
-  &nbsp;
-  <a href="https://oz.warp.dev"><img height="20" alt="Powered by Oz" src="https://raw.githubusercontent.com/warpdotdev/brand-assets/main/Github/Powered-By-Oz-Export@2x.png" /></a>
-</p>
+# Warp OSS Slim Pure
 
-<p align="center">
-  <a href="https://www.warp.dev">Website</a>
-  ·
-  <a href="https://www.warp.dev/code">Code</a>
-  ·
-  <a href="https://www.warp.dev/agents">Agents</a>
-  ·
-  <a href="https://www.warp.dev/terminal">Terminal</a>
-  ·
-  <a href="https://www.warp.dev/drive">Drive</a>
-  ·
-  <a href="https://docs.warp.dev">Docs</a>
-  ·
-  <a href="https://www.warp.dev/blog/how-warp-works">How Warp Works</a>
-</p>
+> 本分支为 **Warp** 的纯净开源与极限瘦身构建版本（Warp OSS Slim Pure），基于 Rust 与自研 GPU 渲染引擎打造，专注于提供极速、纯净、无任何商业干扰与遥测绑定的现代化终端体验。
 
-> [!NOTE]
-> OpenAI is the founding sponsor of the new, open-source Warp repository, and the new agentic management workflows are powered by GPT models.
+---
 
-<h1></h1>
+## 核心设计原则与约束规范（Project Constraints）
 
-## About
+本项目严格遵循以下开发、构建与维护约束：
 
-[Warp](https://www.warp.dev) is an agentic development environment, born out of the terminal. Use Warp's built-in coding agent, or bring your own CLI agent (Claude Code, Codex, Gemini CLI, and others).
+### 1. 严格禁止本地编译（No Local Builds）
+- **CI 优先原则**：所有 Windows 正式构建产物必须全部交由 **GitHub Actions 云端自动化编译**（`Build Windows OSS` 工作流），禁止在本地机器执行 `cargo build` 全量编译，确保构建环境纯净与依赖一致性。
+- **隔离验证原则**：云端编译完成后，产物下载至本地隔离目录（`.tmp/actions/<run-id>/`）执行冒烟测试与功能验证，严禁直接覆盖或污染本地生产环境中的现有安装。
 
-## Installation
+### 2. 彻底物理剥离商业闭源模块（Zero Commercial Code）
+- **物理删除而非条件跳过**：坚决摒弃 `if cfg!(...) { return; }` 式的软屏蔽，对商业闭源、计费充值、拉新推广等模块执行彻底的源码级物理移除（累计物理抹除 22,000+ 行非核心代码）。
+- **已清空的商业组件**：
+  - 彻底移除 `Billing and Usage` 商业账单与积分充值页面（包含超额扣款限额、按月自动续费设置等）；
+  - 彻底移除 `Teams` 商业团队管理与 Stripe 扣费结算网关；
+  - 彻底移除 `Referrals` 邀请拉新推广与返利体系；
+  - 彻底移除启动广告幻灯片（`launch_modal`）、付费升级拦截弹窗（`free_tier_limit_hit_modal`）与模型升级提示。
 
-You can [download Warp](https://www.warp.dev/download) and [read our docs](https://docs.warp.dev/) for platform-specific instructions.
+### 3. 隐私保护与零遥测后门（Zero Telemetry & Sentry）
+- **切断遥测外发**：清空 RudderStack 遥测外发模块与本地事件持久化落盘机制，网络上报通道清空为 No-op。
+- **抹除 Sentry 远程监控**：彻底移除 Sentry 异常监控连接、Minidump 常驻守护子进程与系统环境标签上报。
+- **消除后台心跳与退出等待**：彻底移除 30s/60s 周期性定时唤醒器，抹除客户端退出时强制挂起 5 秒等待发包的逻辑，实现秒关秒退。
 
-## Warp Contributions Overview Dashboard
+### 4. 极致内存优化与自动工作集回收（Memory Optimization）
+- **冷启动尖峰自动收缩**：应用启动 8 秒后（完成系统字体加载、DirectX 着色器构建与历史初始化），后台自动触发 `trim_working_set()` 将冷页与只读资源释放交还给操作系统。
+- **窗口失焦/最小化即时修剪**：在 Windows 事件循环中监听 `WindowEvent::Focused(false)`，窗口最小化或切至后台时立即主动收缩工作集，使物理内存由 400+ MB 骤降至数十兆（20 ~ 30 MB 级别）。
 
-Explore [build.warp.dev](https://build.warp.dev) to:
-- Watch thousands of Oz agents triage issues, write specs, implement changes, and review PRs
-- View top contributors and in-flight features
-- Track your own issues with GitHub sign-in
-- Click into active agent sessions in a web-compiled Warp terminal
+### 5. 核心终端功能完整性（Zero Breakage）
+- 保证终端仿真器内核（ANSI/VT100 状态机、Escape 序列解析、PTY 跨平台管道）；
+- 保证 Block 分块交互模型、分屏组（Splits）、多标签页（Tabs）；
+- 保证自研 WebGPU / DirectX GPU 加速渲染与字体栅格化；
+- 保证命令智能补全、语法高亮与本地历史持久化。
 
-## Oz for OSS
+### 6. 云端构建持续监控约束（CI Monitoring Policy）
+- **40 分钟持续监控**：触发 GitHub Actions 云端编译后，必须保持持续 40 分钟的状态追踪与指标轮询。
+- **每隔 5 分钟汇报一次**：以 5 分钟为一个阶段窗口，定时汇总并向用户汇报编译进度、当前步骤与耗时，严禁使用长时间无果或无响应的挂起命令。
+- **构建完成即刻响应**：一旦检测到云端任务提前完成（`conclusion: success`），立即结束轮询，无缝进入产物下载、隔离环境 Smoke Test 验证与 Release 部署流程，严禁无效空转。
 
-Maintaining a popular open-source project? [Apply for Oz credits](https://tally.so/r/LZWxqG) to explore [Oz for OSS](https://github.com/warpdotdev/oz-for-oss).
+---
 
-Oz for OSS is our partner program for bringing the same agentic open-source management workflows used in this repository to select partner repositories. We work directly with maintainers to implement workflows for issue triage, PR review, community management, and contributor coordination in a way that fits each project.
+## 构建与发布规范（Build & Release）
 
-## Licensing
+### GitHub Actions 自动化流程
+工作流定义位于 `.github/workflows/build-windows-oss.yml`：
+- **Tag 触发发布**：推送以 `v*` 开头的 Tag（例如 `v0.0.0-oss-slim-pure`）即可自动触发完整编译、安装包制作与 Release 发布：
+  - 编译主程序二进制：`warp-oss.exe`；
+  - 打包 Inno Setup 安装包：`WarpOssSetup.exe`；
+  - 组装免安装便携版压缩包：`WarpOssPortable-windows-x64.zip`；
+  - 自动更新并发布到 GitHub Releases。
+- **跨分支构建加速**：配置了 `rust-cache` 跨分支依赖持久化，全量构建在命中缓存后可在 15~18 分钟内全自动完成。
 
-Warp's UI framework (the `warpui_core` and `warpui` crates) are licensed under the [MIT license](LICENSE-MIT).
+---
 
-The rest of the code in this repository is licensed under the [AGPL v3](LICENSE-AGPL).
+## 产物形态说明
 
-## Open Source & Contributing
-
-Warp's client codebase is open source and lives in this repository. We welcome community contributions and have designed a lightweight workflow to help new contributors get started. For the full contribution flow, read our [CONTRIBUTING.md](CONTRIBUTING.md) guide.
-
-> [!TIP]
-> **Chat with contributors and the Warp team** in the [`#oss-contributors`](https://warpcommunity.slack.com/archives/C0B0LM8N4DB) Slack channel — a good place for ad-hoc questions, design discussion, and pairing with maintainers. New here? [Join the Warp Slack community](https://go.warp.dev/join-preview) first, then jump into `#oss-contributors`.
-
-### Issue to PR
-
-Before filing, [search existing issues](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc) for your bug or feature request. If nothing exists, [file an issue](https://github.com/warpdotdev/warp/issues/new/choose) using our templates. Security vulnerabilities should be reported privately as described in [CONTRIBUTING.md](CONTRIBUTING.md#reporting-security-issues).
-
-Once filed, a Warp maintainer reviews the issue and may apply a readiness label: [`ready-to-spec`](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+label%3Aready-to-spec) signals the design is open for contributors to spec out, and [`ready-to-implement`](https://github.com/warpdotdev/warp/issues?q=is%3Aissue+is%3Aopen+label%3Aready-to-implement) signals the design is settled and code PRs are welcome. Anyone can pick up a labeled issue — mention **@oss-maintainers** on an issue if you'd like it considered for a readiness label.
-
-### Building the Repo Locally
-
-To build and run Warp from source:
-
-```bash
-./script/bootstrap   # platform-specific setup
-./script/run         # build and run Warp
-./script/presubmit   # fmt, clippy, and tests
-```
-
-See [WARP.md](WARP.md) for the full engineering guide, including coding style, testing, and platform-specific notes.
-
-## Joining the Team
-
-Interested in joining the team? See our [open roles](https://www.warp.dev/careers).
-
-## Support and Questions
-
-1. See our [docs](https://docs.warp.dev/) for a comprehensive guide to Warp's features.
-2. Join our [Slack Community](https://go.warp.dev/join-preview) to connect with other users and get help from the Warp team — contributors hang out in [`#oss-contributors`](https://warpcommunity.slack.com/archives/C0B0LM8N4DB).
-3. Try our [Preview build](https://www.warp.dev/download-preview) to test the latest experimental features.
-4. Mention **@oss-maintainers** on any issue to escalate to the team — for example, if you encounter problems with the automated agents.
-
-## Code of Conduct
-
-We ask everyone to be respectful and empathetic. Warp follows the [Code of Conduct](CODE_OF_CONDUCT.md). To report violations, email warp-coc at warp.dev.
-
-## Open Source Dependencies
-
-We'd like to call out a few of the [open source dependencies](https://docs.warp.dev/help/licenses) that have helped Warp to get off the ground:
-
-- [Tokio](https://github.com/tokio-rs/tokio)
-- [NuShell](https://github.com/nushell/nushell)
-- [Fig Completion Specs](https://github.com/withfig/autocomplete)
-- [Warp Server Framework](https://github.com/seanmonstar/warp)
-- [Alacritty](https://github.com/alacritty/alacritty)
-- [Hyper HTTP library](https://github.com/hyperium/hyper)
-- [FontKit](https://github.com/servo/font-kit)
-- [Core-foundation](https://github.com/servo/core-foundation-rs)
-- [Smol](https://github.com/smol-rs/smol)
+| 产物名称 | 文件类型 | 适用场景 | 特性与说明 |
+| :--- | :--- | :--- | :--- |
+| **`WarpOssPortable-windows-x64.zip`** | 绿色便携免安装包 | **最推荐** | 解压即用，不写注册表，不冲突已有安装，支持随身携带。 |
+| **`WarpOssSetup.exe`** | Windows 一键安装包 | 习惯桌面安装向导 | 自动创建开始菜单、桌面快捷方式与系统上下文菜单。 |

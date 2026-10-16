@@ -484,8 +484,9 @@ inherits = "release-lto"
 inherits = "release"
 debug = 0
 opt-level = 1
-codegen-units = 256
+codegen-units = 16
 strip = "symbols"
+incremental = false
 
 # A custom release-like profile that forces debug assertions on.
 [profile.release-lto-debug_assertions]

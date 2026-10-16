@@ -74,6 +74,15 @@ jobs:
             Add-Content -Path $env:GITHUB_PATH -Value $innoPath
           }
 
+      - name: Enable LLVM fast linker
+        shell: pwsh
+        run: |
+          $llvmPath = "C:\Program Files\LLVM\bin"
+          if (Test-Path $llvmPath) {
+            Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
+            Write-Output "LLVM lld-link path enabled: $llvmPath"
+          }
+
       - name: Determine build version
         id: version
         shell: pwsh

@@ -133,6 +133,11 @@ impl PromptAlertView {
             return PromptAlertState::NoConnection;
         }
 
+        // In oss_slim pure mode, disable commercial paywalls and telemetry force-gates.
+        if cfg!(feature = "oss_slim") {
+            return PromptAlertState::NoAlert;
+        }
+
         // Check if telemetry is disabled for free tier users.
         // Free tier users must enable telemetry or upgrade to use AI features.
         let privacy_settings = PrivacySettings::as_ref(app);
@@ -399,6 +404,9 @@ impl PromptAlertView {
 }
 
 fn does_alert_block_ai_requests(state: &PromptAlertState) -> bool {
+    if cfg!(feature = "oss_slim") {
+        return false;
+    }
     match state {
         PromptAlertState::AnonymousUserRequestLimitSoftGate | PromptAlertState::NoAlert => false,
         PromptAlertState::NoConnection

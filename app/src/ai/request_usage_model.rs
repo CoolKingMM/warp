@@ -381,6 +381,10 @@ impl AIRequestUsageModel {
     /// 7. user has BYOK enabled and has provided at least one API key
     /// Use this method as the starting point for AI availability checking.
     pub fn has_any_ai_remaining(&self, ctx: &AppContext) -> bool {
+        if cfg!(feature = "oss_slim") {
+            return true;
+        }
+
         let current_workspace = UserWorkspaces::as_ref(ctx).current_workspace();
 
         let has_base_plan_ai_requests = self.has_requests_remaining();

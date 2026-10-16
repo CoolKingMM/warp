@@ -2997,6 +2997,10 @@ impl BlocklistAIController {
         // If overages aren't enabled, we're not going to reap the benefit of refreshing at all anyway.
         let are_overages_enabled = workspace.are_overages_enabled();
 
+        if cfg!(feature = "oss_slim") {
+            return;
+        }
+
         if are_overages_enabled && has_no_requests_remaining {
             // Give a one second delay to ensure that Stripe has been charged and the database is completely updated,
             // before syncing new AI overages data.

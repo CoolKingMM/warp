@@ -1911,6 +1911,9 @@ impl RootView {
     }
 
     fn build_plan_yearly_price_cents(ctx: &AppContext) -> Option<i32> {
+        if cfg!(feature = "oss_slim") {
+            return None;
+        }
         PricingInfoModel::as_ref(ctx)
             .plan_pricing(&StripeSubscriptionPlan::Build)
             .map(|p| p.yearly_plan_price_per_month_usd_cents)

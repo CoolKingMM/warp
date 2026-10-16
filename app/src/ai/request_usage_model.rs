@@ -548,6 +548,10 @@ impl AIRequestUsageModel {
         &self,
         ctx: &AppContext,
     ) -> BuyCreditsBannerDisplayState {
+        if cfg!(feature = "oss_slim") {
+            return BuyCreditsBannerDisplayState::Hidden;
+        }
+
         // Early return if user dismissed
         if self.buy_addon_credits_banner_dismissed {
             return BuyCreditsBannerDisplayState::Hidden;

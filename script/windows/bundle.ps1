@@ -237,5 +237,7 @@ if ($env:GITHUB_ACTIONS -eq 'true') {
     $INSTALLER_PATH = $INSTALLER_PATH -replace '\\', '/'
     "installer_path=$INSTALLER_PATH" >> "$env:GITHUB_OUTPUT"
     "pdb_file_path=$PDB_PATH" >> "$env:GITHUB_OUTPUT"
+    "target_profile_dir=$CARGO_TARGET_OUTPUT_DIR" >> "$env:GITHUB_OUTPUT"
+    "binary_path=$BINARY_PATH" >> "$env:GITHUB_OUTPUT"
     Write-Output '::echo::off'
 }

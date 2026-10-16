@@ -56,8 +56,15 @@ unsafe fn set_app_user_model_id(app_id: String) -> Result<(), windows::core::Err
 /// This drastically reduces physical memory consumption without altering application state.
 pub fn trim_working_set() {
     unsafe {
-        use windows::Win32::System::Memory::SetProcessWorkingSetSize;
-        use windows::Win32::System::Threading::GetCurrentProcess;
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn SetProcessWorkingSetSize(
+                h_process: *mut std::ffi::c_void,
+                dw_minimum_working_set_size: usize,
+                dw_maximum_working_set_size: usize,
+            ) -> i32;
+            fn GetCurrentProcess() -> *mut std::ffi::c_void;
+        }
         let _ = SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
     }
 }

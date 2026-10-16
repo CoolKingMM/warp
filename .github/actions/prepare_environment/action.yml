@@ -18,6 +18,9 @@ inputs:
   save_cache:
     description: If true, save the Rust cache even when the ref is not master.
     default: "false"
+  cache_all_crates:
+    description: If true, cache all crates including first-party workspace crates in rust-cache.
+    default: "false"
   ssh_key:
     description: SSH private key used to clone the private warp-channel-config repository. Only consumed when running in warpdotdev/warp-internal.
 
@@ -81,6 +84,7 @@ runs:
         # Only cache runs on the master branch (caches on feature branches
         # are not reusable), unless the caller opts in for release cache warmup.
         save-if: ${{ github.ref == 'refs/heads/master' || inputs.save_cache == 'true' }}
+        cache-all-crates: ${{ inputs.cache_all_crates }}
 
     - name: Set up Namespace cache
       if: ${{ startsWith(runner.name, 'nsc-runner') }}

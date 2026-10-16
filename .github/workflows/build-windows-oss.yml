@@ -22,13 +22,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  # Cache first-party crate compilation across CI runs. Swatinem/rust-cache only
-  # persists dependency artifacts (it drops workspace crates before saving), so
-  # without sccache the large first-party crates (ai, app, warp_completer, warpui,
-  # graphql, ...) recompile on every run -- the dominant cost of this build.
-  # sccache content-addresses every rustc invocation and serves unchanged crates
-  # from the GitHub Actions cache.
-  RUSTC_WRAPPER: sccache
+  # Cache first-party crate compilation across CI runs.
   SCCACHE_GHA_ENABLED: "true"
   # sccache cannot cache incremental compilation; disabling it also avoids writing
   # unused incremental artifacts in CI.
@@ -63,6 +57,7 @@ jobs:
           install_release_deps: false
           cache_key: windows-oss-release
           save_cache: 'true'
+          cache_all_crates: 'true'
 
       - name: Install Inno Setup
         if: ${{ github.ref_type == 'tag' }}
@@ -114,8 +109,6 @@ jobs:
           REF_TYPE: ${{ github.ref_type }}
           NO_LICENSES: 1
           SKIP_SETTINGS_SCHEMA: 1
-          RUSTC_WRAPPER: sccache
-          SCCACHE_GHA_ENABLED: "true"
         run: |
           $diagnosticsDir = Join-Path $env:RUNNER_TEMP 'warp-build-diagnostics'
           New-Item -ItemType Directory -Path $diagnosticsDir -Force | Out-Null

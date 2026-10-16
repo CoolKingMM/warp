@@ -484,7 +484,7 @@ inherits = "release-lto"
 inherits = "release"
 debug = 0
 opt-level = 1
-codegen-units = 16
+codegen-units = 64
 strip = "symbols"
 incremental = false
 
